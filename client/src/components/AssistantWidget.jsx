@@ -1,0 +1,94 @@
+import { useState, useRef, useEffect } from 'react';
+import { IconBot, IconSend, IconChat } from './icons';
+import { THEMATIQUES, reponseAssistant, reponseHorsPerimetre } from '../data/assistantData';
+
+// §3.3 du CDC : interface de question-réponse contextualisée, base restreinte
+// aux textes réglementaires listés en section 1, journalisation des questions.
+// ⚠️ Réponses simulées ici (voir data/assistantData.js) — le vrai backend doit
+// répondre uniquement à partir des textes autorisés et journaliser chaque échange
+// dans la table QuestionAssistant.
+//
+// Widget flottant (bas gauche), présent sur toutes les pages connectées via AppLayout,
+// plutôt qu'une page dédiée — inspiré des widgets de chat type Novade "Noa".
+
+export default function AssistantWidget() {
+  const [ouvert, setOuvert] = useState(false);
+  const [messages, setMessages] = useState([
+    { from: 'assistant', text: "Bonjour, je suis l'assistant réglementaire. Choisissez une thématique, ou posez votre question." },
+  ]);
+  const [saisie, setSaisie] = useState('');
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    if (ouvert) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [messages, ouvert]);
+
+  function poserQuestion(texte, thematiqueId) {
+    if (!texte.trim()) return;
+    const reponse = thematiqueId ? reponseAssistant(thematiqueId) : reponseHorsPerimetre();
+    setMessages((prev) => [...prev, { from: 'user', text: texte }, { from: 'assistant', text: reponse }]);
+    // TODO : appel API réel + journalisation (table QuestionAssistant)
+    setSaisie('');
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    poserQuestion(saisie, null);
+  }
+
+  return (
+    <>
+      {ouvert && (
+        <div className="assistant-panel" role="dialog" aria-label="Assistant réglementaire">
+          <div className="assistant-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div className="assistant-avatar"><IconBot /></div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13.5 }}>Assistant réglementaire</div>
+                <div style={{ fontSize: 11, color: 'rgba(239,233,223,0.6)' }}>Réponses basées sur les textes réglementaires officiels</div>
+              </div>
+            </div>
+            <button type="button" onClick={() => setOuvert(false)} aria-label="Fermer l'assistant" className="assistant-close">✕</button>
+          </div>
+
+          <div ref={scrollRef} className="assistant-messages">
+            {messages.map((m, i) => (
+              <div key={i} className={`assistant-bubble ${m.from === 'user' ? 'assistant-bubble-user' : 'assistant-bubble-bot'}`}>
+                {m.text}
+              </div>
+            ))}
+          </div>
+
+          <div className="assistant-quickreplies">
+            {THEMATIQUES.map((t) => (
+              <button key={t.id} type="button" onClick={() => poserQuestion(`Que dit la réglementation sur : ${t.label} ?`, t.id)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          <form onSubmit={handleSubmit} className="assistant-inputbar">
+            <input
+              type="text"
+              value={saisie}
+              onChange={(e) => setSaisie(e.target.value)}
+              placeholder="Écrivez votre question…"
+              aria-label="Votre question"
+            />
+            <button type="submit" aria-label="Envoyer"><IconSend /></button>
+          </form>
+        </div>
+      )}
+
+      <button
+        type="button"
+        className="assistant-fab"
+        onClick={() => setOuvert((v) => !v)}
+        aria-label={ouvert ? "Fermer l'assistant réglementaire" : "Ouvrir l'assistant réglementaire"}
+        aria-expanded={ouvert}
+      >
+        <IconChat />
+      </button>
+    </>
+  );
+}
