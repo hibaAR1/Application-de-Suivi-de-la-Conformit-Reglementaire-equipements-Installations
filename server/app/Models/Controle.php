@@ -1,11 +1,15 @@
 <?php
 
-// app/Models/Controle.php
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
 class Controle extends Model
 {
     protected $table = 'controle';
     protected $primaryKey = 'id_controle';
     public $timestamps = false;
+
     protected $fillable = [
         'id_equipement', 'date_controle', 'organisme_controle',
         'resultat_global', 'rapport_controle', 'prochaine_echeance',
