@@ -50,12 +50,19 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("token");
   };
 
+  const permissions = utilisateur?.role?.permissions?.map((p) => p.code) ?? [];
+
   const user = utilisateur
     ? {
         nom: utilisateur.nom,
         role: utilisateur.role?.libelle ?? "",
-        filiale: utilisateur.filiale?.libelle ?? "Toutes filiales",
+        idFiliale: utilisateur.id_filiale, // peut être null (Admin/Direction/Super Admin)
+        filialeCode: utilisateur.filiale?.code ?? null,
+        filialeLibelle: utilisateur.filiale?.libelle ?? "Toutes filiales",
         initiales: getInitiales(utilisateur.nom),
+        permissions,
+        hasPermission: (code) => permissions.includes(code),
+        voitToutesFiliales: permissions.includes("dashboard.groupe.view"),
       }
     : null;
 

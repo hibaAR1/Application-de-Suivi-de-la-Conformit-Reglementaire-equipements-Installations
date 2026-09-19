@@ -11,6 +11,8 @@ import ReserveForm from "./pages/ReserveForm";
 import Groupe from "./pages/Groupe";
 import MobileControl from "./pages/MobileControl";
 import ScanSimule from "./pages/ScanSimule";
+import Utilisateurs from "./pages/Utilisateurs"; // AJOUTE
+import UtilisateurForm from "./pages/UtilisateurForm"; // AJOUTE
 
 function App() {
   return (
@@ -31,6 +33,18 @@ function App() {
             <Route path="/scan/:id" element={<MobileControl />} />
             <Route path="/mobile-control" element={<MobileControl />} />
             <Route path="/scanner" element={<ScanSimule />} />
+            <Route path="/utilisateurs" element={<Utilisateurs />} />{" "}
+            {/* AJOUTE */}
+            <Route
+              path="/utilisateurs/nouveau"
+              element={<UtilisateurForm />}
+            />{" "}
+            {/* AJOUTE */}
+            <Route
+              path="/utilisateurs/:id"
+              element={<UtilisateurForm />}
+            />{" "}
+            {/* AJOUTE */}
           </Route>
         </Route>
       </Routes>
