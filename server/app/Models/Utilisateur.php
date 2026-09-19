@@ -25,4 +25,8 @@ class Utilisateur extends Model
     {
         return $this->belongsTo(Filiale::class, 'id_filiale');
     }
+    public function hasPermission(string $code): bool
+{
+    return $this->role?->permissions->contains('code', $code) ?? false;
+}
 }

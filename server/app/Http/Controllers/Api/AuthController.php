@@ -25,7 +25,7 @@ class AuthController extends Controller
         $token = $utilisateur->createToken('token-api')->plainTextToken;
 
         return response()->json([
-            'utilisateur' => $utilisateur->load(['role', 'filiale']),
+            'utilisateur' => $utilisateur->load(['role.permissions', 'filiale']),
             'token' => $token,
         ]);
     }
@@ -38,6 +38,6 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        return $request->user()->load(['role', 'filiale']);
+        return $request->user()->load(['role.permissions', 'filiale']);
     }
 }
