@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\FilialeController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\UtilisateurController;
 use App\Http\Controllers\Api\ReserveController;
+use App\Http\Controllers\Api\PermissionController;
+use App\Http\Controllers\Api\ControleController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -19,4 +21,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('roles', RoleController::class);
     Route::apiResource('utilisateurs', UtilisateurController::class);
     Route::apiResource('reserves', ReserveController::class);
+    Route::apiResource('controles', ControleController::class)->only(['index', 'store']);
+    Route::apiResource('permissions', PermissionController::class)->only(['index']);
 });
