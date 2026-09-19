@@ -1,6 +1,9 @@
 <?php
 
-// app/Models/Equipement.php
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
 class Equipement extends Model
 {
     protected $table = 'equipement';
@@ -19,4 +22,15 @@ class Equipement extends Model
     {
         return $this->hasMany(Controle::class, 'id_equipement');
     }
+    // app/Models/Equipement.php — ajoute ces 2 méthodes dans la classe
+
+public function filiale()
+{
+    return $this->belongsTo(Filiale::class, 'id_filiale');
+}
+
+public function typeEquipement()
+{
+    return $this->belongsTo(TypeEquipement::class, 'id_type_equipement');
+}
 }

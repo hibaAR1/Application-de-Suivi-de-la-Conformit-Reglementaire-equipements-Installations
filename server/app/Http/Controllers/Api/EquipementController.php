@@ -8,14 +8,20 @@ use Illuminate\Http\Request;
 
 class EquipementController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return Equipement::with('controles')->get();
+        $query = Equipement::with(['filiale', 'typeEquipement', 'controles.reserves']);
+
+        if ($request->has('id_filiale')) {
+            $query->where('id_filiale', $request->id_filiale);
+        }
+
+        return $query->get();
     }
 
     public function show($id)
     {
-        return Equipement::with('controles.reserves')->findOrFail($id);
+        return Equipement::with(['filiale', 'typeEquipement', 'controles.reserves'])->findOrFail($id);
     }
 
     public function store(Request $request)
