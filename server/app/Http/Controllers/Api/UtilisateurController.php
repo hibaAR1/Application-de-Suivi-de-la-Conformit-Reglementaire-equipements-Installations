@@ -33,4 +33,27 @@ class UtilisateurController extends Controller
 
         return Utilisateur::create($data);
     }
+    // app/Http/Controllers/Api/UtilisateurController.php — ajoute ces 2 méthodes
+
+public function update(Request $request, $id)
+{
+    $utilisateur = Utilisateur::findOrFail($id);
+
+    $data = $request->validate([
+        'nom' => 'sometimes|string|max:150',
+        'email' => 'sometimes|email|unique:utilisateur,email,' . $id . ',id_utilisateur',
+        'id_filiale' => 'nullable|integer|exists:filiale,id_filiale',
+        'id_role' => 'sometimes|integer|exists:role,id_role',
+        'actif' => 'sometimes|boolean',
+    ]);
+
+    $utilisateur->update($data);
+    return $utilisateur->load(['role', 'filiale']);
+}
+
+public function destroy($id)
+{
+    Utilisateur::findOrFail($id)->delete();
+    return response()->json(['message' => 'Utilisateur supprimé']);
+}
 }
