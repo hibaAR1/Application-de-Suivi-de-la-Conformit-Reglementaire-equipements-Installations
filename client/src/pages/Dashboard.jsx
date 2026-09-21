@@ -5,6 +5,7 @@ import Badge from "../components/Badge";
 import Gauge from "../components/Gauge";
 import { IconQr } from "../components/icons";
 import { useAuth } from "../context/AuthContext";
+import { useFilialeTheme } from "../context/FilialeThemeContext";
 import { apiFetch } from "../utils/api";
 import { statutEcheance, formatDateFR } from "../utils/echeance";
 
@@ -21,7 +22,7 @@ export default function Dashboard() {
   const { user } = useAuth();
 
   const [filiales, setFiliales] = useState([]);
-  const [filialeActive, setFilialeActive] = useState(user?.filialeCode ?? null);
+  const { filialeActive, setFilialeActive } = useFilialeTheme();
   const [equipements, setEquipements] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState(null);
