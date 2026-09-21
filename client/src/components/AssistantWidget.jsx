@@ -24,6 +24,7 @@ export default function AssistantWidget() {
     },
   ]);
   const [saisie, setSaisie] = useState("");
+  const [enAttente, setEnAttente] = useState(false);
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -32,12 +33,13 @@ export default function AssistantWidget() {
         top: scrollRef.current.scrollHeight,
         behavior: "smooth",
       });
-  }, [messages, ouvert]);
+  }, [messages, ouvert, enAttente]);
 
   async function poserQuestion(texte, thematiqueId) {
-    if (!texte.trim()) return;
+    if (!texte.trim() || enAttente) return;
     setMessages((prev) => [...prev, { from: "user", text: texte }]);
     setSaisie("");
+    setEnAttente(true);
     try {
       const { reponse } = await apiFetch("/assistant", {
         method: "POST",
@@ -49,6 +51,8 @@ export default function AssistantWidget() {
         ...prev,
         { from: "assistant", text: "Erreur de connexion à l'assistant." },
       ]);
+    } finally {
+      setEnAttente(false);
     }
   }
   function handleSubmit(e) {
@@ -97,6 +101,18 @@ export default function AssistantWidget() {
                 {m.text}
               </div>
             ))}
+            {enAttente && (
+              <div
+                className="assistant-bubble assistant-bubble-bot"
+                aria-live="polite"
+              >
+                <span className="assistant-typing">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="assistant-quickreplies">
@@ -104,6 +120,7 @@ export default function AssistantWidget() {
               <button
                 key={t.id}
                 type="button"
+                disabled={enAttente}
                 onClick={() =>
                   poserQuestion(
                     `Que dit la réglementation sur : ${t.label} ?`,
@@ -123,8 +140,9 @@ export default function AssistantWidget() {
               onChange={(e) => setSaisie(e.target.value)}
               placeholder="Écrivez votre question…"
               aria-label="Votre question"
+              disabled={enAttente}
             />
-            <button type="submit" aria-label="Envoyer">
+            <button type="submit" aria-label="Envoyer" disabled={enAttente}>
               <IconSend />
             </button>
           </form>

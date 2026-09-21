@@ -27,6 +27,9 @@ class ReserveController extends Controller
             'delai_levee' => 'nullable|date',
         ]);
 
+        // §3.2 du CDC : une réserve nouvellement créée démarre toujours "Ouverte".
+        $data['statut'] = 'Ouverte';
+
         return Reserve::create($data);
     }
 

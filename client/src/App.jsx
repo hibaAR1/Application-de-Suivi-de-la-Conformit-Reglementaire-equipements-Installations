@@ -25,9 +25,13 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/equipements" element={<EquipementsListe />} />
             <Route path="/equipements/nouveau" element={<EquipementForm />} />
+            <Route
+              path="/equipements/:ref/modifier"
+              element={<EquipementForm />}
+            />
             <Route path="/equipements/:ref" element={<Equipement />} />
             <Route path="/controles" element={<Controles />} />
-            <Route path="/controles/:id/reserve" element={<ReserveForm />} />
+            <Route path="/reserves/:id/lever" element={<ReserveForm />} />
             <Route path="/groupe" element={<Groupe />} />
             <Route path="/scan" element={<ScanSimule />} />
             <Route path="/scan/:id" element={<MobileControl />} />

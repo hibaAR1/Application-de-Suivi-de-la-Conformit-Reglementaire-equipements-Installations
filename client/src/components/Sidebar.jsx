@@ -1,5 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useFilialeTheme } from "../context/FilialeThemeContext";
+import { LOGOS_FILIALE } from "../data/logosFiliale";
 import {
   IconGrid,
   IconBox,
@@ -16,16 +18,17 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
+  const { filialeActive, nom, initiales } = useFilialeTheme();
   const roleLabel = user ? `${user.role} · ${user.filialeLibelle}` : "";
+  const logo = LOGOS_FILIALE[filialeActive] ?? LOGOS_FILIALE.GROUPE;
 
   return (
     <aside className="sidebar">
       <div className="brand">
-        <div className="brand-mark">MH</div>
-        <div className="brand-text">
-          Ménara Holding
-          <span>{roleLabel}</span>
+        <div className="brand-logo">
+          <img src={logo} alt={nom} />
         </div>
+        <div className="brand-mark">{initiales}</div>
       </div>
       <nav>
         {NAV_ITEMS.map((item) => (
