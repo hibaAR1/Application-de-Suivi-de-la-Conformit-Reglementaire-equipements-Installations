@@ -31,15 +31,21 @@ class ReserveController extends Controller
     }
 
     public function update(Request $request, $id)
-    {
-        $reserve = Reserve::findOrFail($id);
-        $data = $request->validate([
-            'statut' => 'sometimes|in:Ouverte,En cours,Levée,En retard',
-            'justificatif_levee' => 'nullable|string',
-            'date_levee_effective' => 'nullable|date',
-        ]);
+{
+    $reserve = Reserve::findOrFail($id);
 
-        $reserve->update($data);
-        return $reserve;
+    $data = $request->validate([
+        'statut' => 'sometimes|in:Ouverte,En cours,Levée,En retard',
+        'justificatif_levee' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240', // PDF/image, 10 Mo max
+        'date_levee_effective' => 'nullable|date',
+    ]);
+
+    // Si un fichier justificatif a été envoyé, on le stocke et on ne garde que son chemin
+    if ($request->hasFile('justificatif_levee')) {
+        $data['justificatif_levee'] = $request->file('justificatif_levee')->store('justificatifs', 'local');
     }
+
+    $reserve->update($data);
+    return $reserve;
+}
 }
