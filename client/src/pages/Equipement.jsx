@@ -4,7 +4,6 @@ import Badge from "../components/Badge";
 import QRVisual from "../components/QRVisual";
 import { IconChevron } from "../components/icons";
 import { useEquipements } from "../context/EquipementsContext";
-import { useControles } from "../context/ControlesContext";
 
 const CRITICITE_TONE = {
   Mineure: "success",
@@ -21,10 +20,17 @@ const RESERVE_STATUT_TONE = {
 export default function Equipement() {
   const { ref } = useParams();
   const navigate = useNavigate();
-  const { getByRef } = useEquipements();
-  const { controles = [] } = useControles();
+  const { getByRef, chargement } = useEquipements();
 
   const eq = getByRef(ref);
+
+  if (chargement && !eq) {
+    return (
+      <div className="content">
+        <Plate style={{ padding: 24 }}>Chargement...</Plate>
+      </div>
+    );
+  }
 
   if (!eq) {
     return (
@@ -34,17 +40,20 @@ export default function Equipement() {
     );
   }
 
-  const historique = controles
-    .filter((c) => c.equipementRef === ref)
-    .sort((a, b) => (a.dateControle < b.dateControle ? 1 : -1));
-
-  const reserveActive = historique.find(
-    (c) => c.reserve && c.reserve.statut !== "Levée",
-  )?.reserve;
-
-  const controleAvecReserveActive = historique.find(
-    (c) => c.reserve && c.reserve.statut !== "Levée",
+  const historique = [...(eq.controles ?? [])].sort((a, b) =>
+    a.date_controle < b.date_controle ? 1 : -1,
   );
+
+  let reserveActive = null;
+  let controleAvecReserveActive = null;
+  for (const c of historique) {
+    const r = (c.reserves ?? []).find((res) => res.statut !== "Levée");
+    if (r) {
+      reserveActive = r;
+      controleAvecReserveActive = c;
+      break;
+    }
+  }
 
   return (
     <>
@@ -58,11 +67,12 @@ export default function Equipement() {
             color: "var(--text-muted)",
           }}
         >
-          Équipements <IconChevron /> <span className="ref">{eq.ref}</span>
+          Équipements <IconChevron />{" "}
+          <span className="ref">{eq.id_equipement}</span>
         </div>
         <button
           className="btn btn-primary"
-          onClick={() => navigate(`/equipements/${ref}/modifier`)}
+          onClick={() => navigate(`/equipements/${eq.id_equipement}/modifier`)}
         >
           Modifier la fiche
         </button>
@@ -78,27 +88,27 @@ export default function Equipement() {
             flexWrap: "wrap",
           }}
         >
-          <QRVisual />
+          <QRVisual valeur={eq.id_equipement} />
           <div style={{ flex: 1, minWidth: 180 }}>
-            <div className="eyebrow">{eq.typeEquipement}</div>
+            <div className="eyebrow">{eq.type_equipement?.libelle}</div>
             <h2 style={{ fontSize: "21px", marginBottom: 4 }}>
               {eq.designation}
             </h2>
-            <div className="ref">{eq.ref}</div>
+            <div className="ref">{eq.id_equipement}</div>
           </div>
           <div style={{ width: 1, background: "var(--border)" }} />
           <div style={{ width: 280 }}>
             <div className="spec-row">
               <span className="spec-label">Filiale</span>
-              <span>{eq.filiale}</span>
+              <span>{eq.filiale?.libelle ?? eq.filiale?.code}</span>
             </div>
             <div className="spec-row">
               <span className="spec-label">Mise en service</span>
-              <span className="mono">{eq.dateMiseEnService}</span>
+              <span className="mono">{eq.date_mise_en_service}</span>
             </div>
             <div className="spec-row">
               <span className="spec-label">Périodicité</span>
-              <span>{eq.periodiciteControle} mois</span>
+              <span>{eq.type_equipement?.periodicite_mois} mois</span>
             </div>
             <div className="spec-row">
               <span className="spec-label">Statut</span>
@@ -139,20 +149,20 @@ export default function Equipement() {
                 </thead>
                 <tbody>
                   {historique.map((h) => (
-                    <tr key={h.id}>
-                      <td className="mono">{h.dateControle}</td>
-                      <td>{h.organisme}</td>
+                    <tr key={h.id_controle}>
+                      <td className="mono">{h.date_controle}</td>
+                      <td>{h.organisme_controle}</td>
                       <td>
                         <Badge
                           tone={
-                            h.resultat === "Favorable"
+                            h.resultat_global === "Favorable"
                               ? "success"
-                              : h.resultat === "Défavorable"
+                              : h.resultat_global === "Défavorable"
                                 ? "danger"
                                 : "warning"
                           }
                         >
-                          {h.resultat}
+                          {h.resultat_global}
                         </Badge>
                       </td>
                     </tr>
@@ -168,14 +178,14 @@ export default function Equipement() {
             </div>
             {reserveActive ? (
               <div style={{ padding: "18px 20px" }}>
-                <Badge tone={CRITICITE_TONE[reserveActive.criticite]}>
-                  {reserveActive.criticite}
+                <Badge tone={CRITICITE_TONE[reserveActive.niveau_criticite]}>
+                  {reserveActive.niveau_criticite}
                 </Badge>{" "}
                 <Badge tone={RESERVE_STATUT_TONE[reserveActive.statut]}>
                   {reserveActive.statut}
                 </Badge>
                 <div style={{ fontSize: 13.5, marginTop: 10 }}>
-                  {reserveActive.nature}
+                  {reserveActive.nature_reserve}
                 </div>
                 <div className="spec-label" style={{ marginTop: 12 }}>
                   Délai de levée réglementaire
@@ -184,14 +194,14 @@ export default function Equipement() {
                   className="mono"
                   style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}
                 >
-                  {reserveActive.delaiLevee}
+                  {reserveActive.delai_levee}
                 </div>
                 <button
                   type="button"
                   className="btn btn-primary"
                   style={{ fontSize: 12.5, padding: "7px 14px" }}
                   onClick={() =>
-                    navigate(`/reserves/${controleAvecReserveActive.id}/lever`)
+                    navigate(`/reserves/${reserveActive.id_reserve}/lever`)
                   }
                 >
                   Lever la réserve

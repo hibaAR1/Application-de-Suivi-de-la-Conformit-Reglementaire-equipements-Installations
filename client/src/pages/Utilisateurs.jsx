@@ -106,7 +106,11 @@ export default function Utilisateurs() {
                       <td style={{ fontWeight: 600 }}>{u.nom}</td>
                       <td style={{ color: "var(--text-muted)" }}>{u.email}</td>
                       <td>{u.role?.libelle ?? "—"}</td>
-                      <td>{u.filiale?.code ?? "Toutes filiales"}</td>
+                      <td>
+                        {u.filiales && u.filiales.length > 0
+                          ? u.filiales.map((f) => f.code).join(", ")
+                          : "Toutes filiales"}
+                      </td>
                       <td>
                         <Badge tone={u.actif ? "success" : "danger"}>
                           {u.actif ? "Actif" : "Inactif"}

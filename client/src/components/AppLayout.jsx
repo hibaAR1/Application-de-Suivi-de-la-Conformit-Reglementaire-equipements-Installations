@@ -1,14 +1,17 @@
-import { Outlet } from 'react-router-dom';
-import Sidebar from './Sidebar';
-import BottomNav from './BottomNav';
-import AssistantWidget from './AssistantWidget';
+import { Outlet } from "react-router-dom";
+import Sidebar from "./Sidebar";
+import BottomNav from "./BottomNav";
+import AssistantWidget from "./AssistantWidget";
+import { useFilialeTheme } from "../context/FilialeThemeContext";
 
-// Enveloppe toutes les pages "connectées" (dashboard, équipements, groupe...).
-// L'assistant réglementaire est un widget flottant présent partout ici,
-// plutôt qu'une page dédiée (§3.3 du CDC — accessible en contexte, sans quitter l'écran en cours).
 export default function AppLayout() {
+  const { couleur, contraste } = useFilialeTheme();
+
   return (
-    <div className="app-shell">
+    <div
+      className="app-shell"
+      style={{ "--gold": couleur, "--gold-contrast": contraste }}
+    >
       <Sidebar />
       <div className="main">
         <Outlet />

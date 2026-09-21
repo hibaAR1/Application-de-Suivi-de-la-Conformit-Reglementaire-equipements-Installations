@@ -1,15 +1,12 @@
-import { createContext, useContext, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
+import { apiFetch } from "../utils/api";
 
-export const PERIODICITE_PAR_DEFAUT = {
-  "Engin mobile": 12,
-  "Installation électrique": 12,
-  "Appareil de levage": 6,
-  "Équipement sous pression": 12,
-  Autre: 12,
-};
-
-export const TYPES_EQUIPEMENT = Object.keys(PERIODICITE_PAR_DEFAUT);
-export const FILIALES_CODES = ["MP", "CTM", "MT", "ML", "TCGM"];
 export const STATUTS_EQUIPEMENT = [
   "En service",
   "Hors service",
@@ -17,87 +14,111 @@ export const STATUTS_EQUIPEMENT = [
   "Réformé",
 ];
 
-const SEED = [
-  {
-    ref: "CTM-0089",
-    filiale: "CTM",
-    typeEquipement: "Installation électrique",
-    designation: "Armoire électrique HT — atelier 1",
-    marqueModele: "Schneider Prisma",
-    numeroSerie: "SC-2017-8842",
-    dateMiseEnService: "2017-11-02",
-    periodiciteControle: 12,
-    statut: "En service",
-  },
-  {
-    ref: "CTM-0142",
-    filiale: "CTM",
-    typeEquipement: "Appareil de levage",
-    designation: "Pont roulant 5T",
-    marqueModele: "Demag DR-5000",
-    numeroSerie: "DM-2019-3311",
-    dateMiseEnService: "2019-03-12",
-    periodiciteControle: 6,
-    statut: "En service",
-  },
-  {
-    ref: "CTM-0057",
-    filiale: "CTM",
-    typeEquipement: "Équipement sous pression",
-    designation: "Compresseur sous pression",
-    marqueModele: "Atlas Copco GA30",
-    numeroSerie: "AC-2015-1190",
-    dateMiseEnService: "2015-06-20",
-    periodiciteControle: 12,
-    statut: "En service",
-  },
-  {
-    ref: "CTM-0201",
-    filiale: "CTM",
-    typeEquipement: "Engin mobile",
-    designation: "Chariot élévateur",
-    marqueModele: "Toyota 8FG25",
-    numeroSerie: "TY-2021-0044",
-    dateMiseEnService: "2021-01-15",
-    periodiciteControle: 12,
-    statut: "En service",
-  },
-];
-
-function genererIdentifiant(filiale, equipementsExistants) {
+// §3.1 du CDC : "Identifiant équipement — Généré automatiquement (préfixe filiale + numéro séquentiel)".
+function genererIdentifiant(codeFiliale, equipementsExistants) {
   const count =
-    equipementsExistants.filter((e) => e.filiale === filiale).length + 1;
-  return `${filiale}-${String(count).padStart(4, "0")}`;
+    equipementsExistants.filter((e) =>
+      e.id_equipement?.startsWith(`${codeFiliale}-`),
+    ).length + 1;
+  return `${codeFiliale}-${String(count).padStart(4, "0")}`;
 }
 
 const EquipementsContext = createContext(null);
 
 export function EquipementsProvider({ children }) {
-  const [equipements, setEquipements] = useState(SEED);
+  const [equipements, setEquipements] = useState([]);
+  const [filiales, setFiliales] = useState([]);
+  const [typesEquipement, setTypesEquipement] = useState([]);
+  const [chargement, setChargement] = useState(true);
+  const [erreur, setErreur] = useState(null);
 
+  const rafraichirEquipements = useCallback(() => {
+    setChargement(true);
+    return apiFetch("/equipements")
+      .then(setEquipements)
+      .catch((e) => setErreur(e.message))
+      .finally(() => setChargement(false));
+  }, []);
+
+  useEffect(() => {
+    rafraichirEquipements();
+    apiFetch("/filiales")
+      .then(setFiliales)
+      .catch((e) => setErreur(e.message));
+    apiFetch("/type-equipements")
+      .then(setTypesEquipement)
+      .catch((e) => setErreur(e.message));
+  }, [rafraichirEquipements]);
+
+  // Un "ref" peut être soit l'identifiant texte (CTM-0089), soit l'id numérique — on gère les deux.
   function getByRef(ref) {
     if (!ref) return null;
     return (
       equipements.find(
-        (e) => e.ref.trim().toUpperCase() === ref.trim().toUpperCase(),
+        (e) =>
+          String(e.id_equipement).trim().toUpperCase() ===
+          String(ref).trim().toUpperCase(),
       ) ?? null
     );
   }
 
-  function creerEquipement(donnees) {
-    const ref = genererIdentifiant(donnees.filiale, equipements);
-    const nouveau = { ref, ...donnees };
-    setEquipements((prev) => [nouveau, ...prev]);
-    return nouveau;
+  // donnees attend : { codeFiliale, id_type_equipement, designation, marque_modele, numero_serie, date_mise_en_service, statut }
+  async function creerEquipement(donnees) {
+    const id_equipement = genererIdentifiant(donnees.codeFiliale, equipements);
+    const filiale = filiales.find((f) => f.code === donnees.codeFiliale);
+    const corps = {
+      id_equipement,
+      referentiel: id_equipement,
+      id_filiale: filiale?.id_filiale,
+      id_type_equipement: donnees.id_type_equipement,
+      designation: donnees.designation,
+      marque_modele: donnees.marque_modele,
+      numero_serie: donnees.numero_serie,
+      date_mise_en_service: donnees.date_mise_en_service,
+      statut: donnees.statut,
+    };
+    const cree = await apiFetch("/equipements", {
+      method: "POST",
+      body: JSON.stringify(corps),
+    });
+    setEquipements((prev) => [cree, ...prev]);
+    return cree;
   }
 
-  function modifierEquipement(ref, donnees) {
+  async function modifierEquipement(id, donnees) {
+    const filiale = donnees.codeFiliale
+      ? filiales.find((f) => f.code === donnees.codeFiliale)
+      : null;
+    const corps = {
+      ...(filiale ? { id_filiale: filiale.id_filiale } : {}),
+      id_type_equipement: donnees.id_type_equipement,
+      designation: donnees.designation,
+      marque_modele: donnees.marque_modele,
+      numero_serie: donnees.numero_serie,
+      date_mise_en_service: donnees.date_mise_en_service,
+      statut: donnees.statut,
+    };
+    const maj = await apiFetch(`/equipements/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(corps),
+    });
     setEquipements((prev) =>
-      prev.map((e) => (e.ref === ref ? { ...e, ...donnees } : e)),
+      prev.map((e) => (e.id_equipement === id ? maj : e)),
     );
+    return maj;
   }
 
-  const value = { equipements, getByRef, creerEquipement, modifierEquipement };
+  const value = {
+    equipements,
+    filiales,
+    typesEquipement,
+    chargement,
+    erreur,
+    getByRef,
+    creerEquipement,
+    modifierEquipement,
+    rafraichirEquipements,
+  };
 
   return (
     <EquipementsContext.Provider value={value}>

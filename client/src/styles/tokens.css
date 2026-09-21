@@ -19,28 +19,9 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #131110;
-    --surface: #1C1917;
-    --surface-2: #211D1A;
-    --text: #EFE9DF;
-    --text-muted: #8F8577;
-    --border: #322C25;
-    --grid-line: rgba(239, 233, 223, 0.045);
-    --bordeaux: #D4707D;
-    --gold: #D6AF63;
-    --anthracite: #EFE9DF;
-    --success: #74BF92;
-    --success-bg: #1D2B22;
-    --warning: #E0B458;
-    --warning-bg: #362B16;
-    --danger: #E27A67;
-    --danger-bg: #3A231E;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 28px rgba(0, 0, 0, 0.45);
-    color-scheme: dark;
-  }
-}
+/* Le mode sombre automatique du PC de l'utilisateur est volontairement désactivé :
+   l'app garde toujours le thème clair, quel que soit le réglage Windows/navigateur.
+   (le bloc @media (prefers-color-scheme: dark) qui existait ici a été retiré) */
 
 :root[data-theme="dark"] {
   --bg: #131110;
@@ -91,7 +72,10 @@ a { color: inherit; text-decoration: none; }
 .app-shell { display: flex; min-height: 100vh; container-type: inline-size; }
 .sidebar { width: 252px; flex-shrink: 0; background: #0C0B0A; color: #EFE9DF; display: flex; flex-direction: column; padding: 22px 15px; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 2px 6px 26px; }
-.brand-mark { width: 34px; height: 34px; background: var(--gold); display: flex; align-items: center; justify-content: center; font-family: 'Archivo', sans-serif; font-weight: 800; color: #1C1917; font-size: 14px; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); flex-shrink: 0; }
+.brand-mark { width: 34px; height: 34px; background: var(--gold); display: flex; align-items: center; justify-content: center; font-family: 'Archivo', sans-serif; font-weight: 800; color: var(--gold-contrast, #1C1917); font-size: 14px; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); flex-shrink: 0; }
+.brand-logo { display: flex; align-items: center; background: #fff; border-radius: 8px; padding: 8px 10px; width: 100%; }
+.brand-logo img { display: block; width: 100%; height: auto; max-height: 40px; object-fit: contain; }
+.sidebar .brand-mark { display: none; }
 .brand-text { font-family: 'Archivo', sans-serif; font-weight: 700; font-size: 14px; line-height: 1.2; white-space: nowrap; }
 .brand-text span { display: block; font-family: 'IBM Plex Mono', monospace; font-weight: 400; font-size: 10px; letter-spacing: 0.04em; opacity: 0.55; margin-top: 3px; text-transform: uppercase; }
 .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 6px; color: rgba(239, 233, 223, 0.7); background: none; border: none; width: 100%; text-align: left; font-size: 13.5px; font-weight: 500; margin-bottom: 1px; }
@@ -118,7 +102,9 @@ a { color: inherit; text-decoration: none; }
 /* --- Tablette : sidebar repliee en icones --- */
 @container (max-width: 940px) {
   .sidebar { width: 68px; padding: 22px 10px; align-items: center; }
-  .brand { padding-bottom: 22px; }
+  .brand { padding-bottom: 22px; 
+    .brand-logo { display: none; }
+  .sidebar .brand-mark { display: flex; }}
   .brand-text, .nav-section-label, .user-name, .user-role, .nav-label { display: none; }
   .nav-item { justify-content: center; padding: 11px; }
   .hero-row { grid-template-columns: 240px 1fr; }
@@ -232,7 +218,17 @@ tr:last-child td { border-bottom: none; }
 .assistant-bubble { max-width: 84%; padding: 9px 13px; border-radius: 10px; font-size: 13px; line-height: 1.45; }
 .assistant-bubble-bot { align-self: flex-start; background: var(--surface-2); border: 1px solid var(--border); }
 .assistant-bubble-user { align-self: flex-end; background: var(--bordeaux); color: #fff; }
-
+.assistant-typing { display: inline-flex; gap: 4px; align-items: center; padding: 2px 0; }
+.assistant-typing span {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted, #999);
+  animation: assistant-typing-bounce 1.2s infinite ease-in-out;
+}
+.assistant-typing span:nth-child(2) { animation-delay: 0.15s; }
+.assistant-typing span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes assistant-typing-bounce {
+  0%, 60%, 100% { opacity: 0.35; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
 .assistant-quickreplies { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 14px 10px; flex-shrink: 0; }
 .assistant-quickreplies button {
   background: var(--surface-2); border: 1px solid var(--border); border-radius: 100px;
