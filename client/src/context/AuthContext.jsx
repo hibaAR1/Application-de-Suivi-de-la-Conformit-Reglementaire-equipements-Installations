@@ -51,14 +51,19 @@ export function AuthProvider({ children }) {
   };
 
   const permissions = utilisateur?.role?.permissions?.map((p) => p.code) ?? [];
+  // Un utilisateur peut désormais être rattaché à plusieurs filiales précises.
+  const filiales = utilisateur?.filiales ?? [];
 
   const user = utilisateur
     ? {
         nom: utilisateur.nom,
         role: utilisateur.role?.libelle ?? "",
-        idFiliale: utilisateur.id_filiale, // peut être null (Admin/Direction/Super Admin)
-        filialeCode: utilisateur.filiale?.code ?? null,
-        filialeLibelle: utilisateur.filiale?.libelle ?? "Toutes filiales",
+        idFiliales: filiales.map((f) => f.id_filiale), // tableau, vide = toutes filiales
+        filialesCodes: filiales.map((f) => f.code),
+        filialeCode: filiales[0]?.code ?? null, // filiale "par défaut" pour le thème/sidebar
+        filialeLibelle: filiales.length
+          ? filiales.map((f) => f.libelle).join(", ")
+          : "Toutes filiales",
         initiales: getInitiales(utilisateur.nom),
         permissions,
         hasPermission: (code) => permissions.includes(code),

@@ -1,26 +1,23 @@
-import Plate from './Plate';
+import { QRCodeSVG } from "qrcode.react";
+import Plate from "./Plate";
 
-// ⚠️ Placeholder visuel uniquement, pas un vrai QR code scannable.
-// Pour la vraie génération : lib "qrcode" côté backend (§3.1 du CDC) ou "qrcode.react" côté front.
-const CELLS = [
-  1, 0, 1, 1, 0, 1, 0, 1,
-  0, 1, 0, 0, 1, 0, 1, 0,
-  1, 1, 1, 0, 1, 1, 0, 1,
-  0, 0, 1, 1, 0, 0, 1, 0,
-  1, 0, 0, 1, 1, 1, 0, 1,
-  0, 1, 1, 0, 0, 1, 1, 0,
-  1, 1, 0, 1, 0, 0, 1, 1,
-  0, 0, 1, 0, 1, 1, 0, 0,
-];
-
-export default function QRVisual() {
+export default function QRVisual({ valeur }) {
   return (
-    <Plate className="qr-plate">
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '1.5px', width: '100%', height: '100%' }}>
-        {CELLS.map((c, i) => (
-          <div key={i} style={{ background: c ? 'var(--anthracite)' : 'transparent' }} />
-        ))}
-      </div>
+    <Plate
+      className="qr-plate"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 8,
+      }}
+    >
+      <QRCodeSVG
+        value={valeur || "inconnu"}
+        size={96}
+        bgColor="#FFFFFF"
+        fgColor="#000000"
+      />
     </Plate>
   );
 }

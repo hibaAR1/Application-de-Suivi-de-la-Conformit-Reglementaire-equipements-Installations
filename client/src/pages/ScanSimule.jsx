@@ -1,19 +1,38 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { IconQr } from "../components/icons";
-
-const REF_SIMULEE = "CTM-0089";
+import { Html5QrcodeScanner } from "html5-qrcode";
 
 export default function ScanSimule() {
   const navigate = useNavigate();
-  const [detecte, setDetecte] = useState(false);
+  const conteneurId = "lecteur-qr";
+  const dejaNavigue = useRef(false);
+  const [etat, setEtat] = useState("attente"); // attente | actif | detecte
+  const [refDetectee, setRefDetectee] = useState(null);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setDetecte(true), 1400);
-    const t2 = setTimeout(() => navigate(`/equipements/${REF_SIMULEE}`), 2000);
+    const scanner = new Html5QrcodeScanner(
+      conteneurId,
+      { fps: 10, qrbox: 240 },
+      false,
+    );
+
+    scanner.render(
+      (texteDecode) => {
+        if (dejaNavigue.current) return;
+        dejaNavigue.current = true;
+        setEtat("detecte");
+        setRefDetectee(texteDecode);
+        scanner.clear().catch(() => {});
+        setTimeout(() => navigate(`/scan/${texteDecode}`), 900);
+      },
+      () => {
+        // Appelé à chaque frame sans QR détecté — signe que la caméra tourne bien.
+        setEtat((e) => (e === "attente" ? "actif" : e));
+      },
+    );
+
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
+      scanner.clear().catch(() => {});
     };
   }, [navigate]);
 
@@ -22,61 +41,69 @@ export default function ScanSimule() {
       style={{
         minHeight: "100vh",
         background: "#0C0B0A",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
         color: "#EFE9DF",
+        padding: "40px 20px",
+        textAlign: "center",
       }}
     >
+      <h2 style={{ marginBottom: 4 }}>Scanner un équipement</h2>
+      <p style={{ fontSize: 13, opacity: 0.6, marginBottom: 16 }}>
+        Autorise l'accès à la caméra, puis vise le QR code collé sur
+        l'équipement.
+      </p>
+
+      {/* Indicateur d'état : te dit en direct si ça scanne ou non */}
       <div
         style={{
-          width: 240,
-          height: 240,
-          position: "relative",
-          border: `2px solid ${
-            detecte ? "var(--success, #4CAF50)" : "var(--gold, #D4AF37)"
-          }`,
-          borderRadius: 16,
-          display: "flex",
+          display: "inline-flex",
           alignItems: "center",
-          justifyContent: "center",
-          transition: "border-color 0.2s",
-        }}
-      >
-        {!detecte && (
-          <div
-            style={{
-              position: "absolute",
-              left: 8,
-              right: 8,
-              height: 2,
-              background: "var(--gold, #D4AF37)",
-              animation: "scan-line 1.4s ease-in-out infinite",
-            }}
-          />
-        )}
-        <IconQr />
-      </div>
-      <div
-        style={{
-          marginTop: 24,
-          fontSize: 14,
+          gap: 8,
+          padding: "6px 14px",
+          borderRadius: 999,
+          fontSize: 12.5,
           fontFamily: "'IBM Plex Mono',monospace",
           textTransform: "uppercase",
           letterSpacing: "0.04em",
+          marginBottom: 20,
+          background: "rgba(255,255,255,0.06)",
+          border: `1px solid ${
+            etat === "detecte"
+              ? "#4CAF50"
+              : etat === "actif"
+                ? "var(--gold, #D4AF37)"
+                : "rgba(239,233,223,0.3)"
+          }`,
+          color:
+            etat === "detecte"
+              ? "#4CAF50"
+              : etat === "actif"
+                ? "var(--gold, #D4AF37)"
+                : "#EFE9DF",
         }}
       >
-        {detecte
-          ? `Équipement détecté : ${REF_SIMULEE}`
-          : "Recherche du QR code…"}
+        <span
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            background: "currentColor",
+            animation:
+              etat === "actif" ? "pulse-dot 1.1s ease-in-out infinite" : "none",
+          }}
+        />
+        {etat === "attente" && "Initialisation de la caméra…"}
+        {etat === "actif" && "Scan actif — recherche du QR code…"}
+        {etat === "detecte" && `QR code détecté : ${refDetectee}`}
       </div>
+
+      <div id={conteneurId} style={{ maxWidth: 420, margin: "0 auto" }} />
+
       <button
         type="button"
         onClick={() => navigate(-1)}
         className="btn btn-secondary"
         style={{
-          marginTop: 32,
+          marginTop: 24,
           background: "transparent",
           borderColor: "rgba(239,233,223,0.3)",
           color: "#EFE9DF",
@@ -84,11 +111,11 @@ export default function ScanSimule() {
       >
         Annuler
       </button>
+
       <style>{`
-        @keyframes scan-line {
-          0% { top: 8px; }
-          50% { top: calc(100% - 10px); }
-          100% { top: 8px; }
+        @keyframes pulse-dot {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.35; transform: scale(0.7); }
         }
       `}</style>
     </div>
