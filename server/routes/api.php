@@ -9,7 +9,8 @@ use App\Http\Controllers\Api\ReserveController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\ControleController;
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\Api\TypeEquipementController;
+use App\Http\Controllers\Api\AssistantController;
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -23,4 +24,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('reserves', ReserveController::class);
     Route::apiResource('controles', ControleController::class)->only(['index', 'store']);
     Route::apiResource('permissions', PermissionController::class)->only(['index']);
+    Route::get('/type-equipements', [TypeEquipementController::class, 'index']);
+Route::post('/type-equipements', [TypeEquipementController::class, 'store']);
+Route::post('/assistant', [AssistantController::class, 'poser']);
 });

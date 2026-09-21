@@ -202,7 +202,7 @@ tr:last-child td { border-bottom: none; }
 .mobile-topbar { background: #0C0B0A; color: #EFE9DF; padding: 16px 18px; }
 .mobile-content { padding: 18px; }
 
-/* --- Widget assistant flottant (bas gauche) --- */
+/* --- Widget assistant flottant (bas droite) --- */
 .assistant-fab {
   position: fixed; right: 24px; bottom: 24px; z-index: 60;
   width: 54px; height: 54px; border-radius: 50%; border: none;
@@ -212,7 +212,7 @@ tr:last-child td { border-bottom: none; }
 .assistant-fab:hover { background: var(--bordeaux); filter: brightness(1.08); }
 
 .assistant-panel {
-  position: fixed; left: 24px; bottom: 90px; z-index: 60;
+  position: fixed; right: 24px; bottom: 90px; z-index: 60;
   width: 340px; max-width: calc(100vw - 48px); height: 460px; max-height: calc(100vh - 140px);
   background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
   box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden;
@@ -251,8 +251,8 @@ tr:last-child td { border-bottom: none; }
 }
 
 @media (max-width: 620px) {
-  .assistant-fab { bottom: 84px; left: 16px; }
-  .assistant-panel { left: 16px; bottom: 148px; width: calc(100vw - 32px); height: 60vh; }
+  .assistant-fab { bottom: 84px; right: 16px; }
+  .assistant-panel { right: 16px; bottom: 148px; width: calc(100vw - 32px); height: 60vh; }
 }
 /* --- Page de connexion --- */
 .login-page {

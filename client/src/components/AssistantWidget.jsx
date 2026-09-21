@@ -1,7 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
-import { IconBot, IconSend, IconChat } from './icons';
-import { THEMATIQUES, reponseAssistant, reponseHorsPerimetre } from '../data/assistantData';
-
+import { useState, useRef, useEffect } from "react";
+import { IconBot, IconSend, IconChat } from "./icons";
+import {
+  THEMATIQUES,
+  reponseAssistant,
+  reponseHorsPerimetre,
+} from "../data/assistantData";
+import { apiFetch } from "../utils/api";
 // §3.3 du CDC : interface de question-réponse contextualisée, base restreinte
 // aux textes réglementaires listés en section 1, journalisation des questions.
 // ⚠️ Réponses simulées ici (voir data/assistantData.js) — le vrai backend doit
@@ -14,23 +18,39 @@ import { THEMATIQUES, reponseAssistant, reponseHorsPerimetre } from '../data/ass
 export default function AssistantWidget() {
   const [ouvert, setOuvert] = useState(false);
   const [messages, setMessages] = useState([
-    { from: 'assistant', text: "Bonjour, je suis l'assistant réglementaire. Choisissez une thématique, ou posez votre question." },
+    {
+      from: "assistant",
+      text: "Bonjour, je suis l'assistant réglementaire. Choisissez une thématique, ou posez votre question.",
+    },
   ]);
-  const [saisie, setSaisie] = useState('');
+  const [saisie, setSaisie] = useState("");
   const scrollRef = useRef(null);
 
   useEffect(() => {
-    if (ouvert) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    if (ouvert)
+      scrollRef.current?.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: "smooth",
+      });
   }, [messages, ouvert]);
 
-  function poserQuestion(texte, thematiqueId) {
+  async function poserQuestion(texte, thematiqueId) {
     if (!texte.trim()) return;
-    const reponse = thematiqueId ? reponseAssistant(thematiqueId) : reponseHorsPerimetre();
-    setMessages((prev) => [...prev, { from: 'user', text: texte }, { from: 'assistant', text: reponse }]);
-    // TODO : appel API réel + journalisation (table QuestionAssistant)
-    setSaisie('');
+    setMessages((prev) => [...prev, { from: "user", text: texte }]);
+    setSaisie("");
+    try {
+      const { reponse } = await apiFetch("/assistant", {
+        method: "POST",
+        body: JSON.stringify({ question: texte, thematique: thematiqueId }),
+      });
+      setMessages((prev) => [...prev, { from: "assistant", text: reponse }]);
+    } catch (e) {
+      setMessages((prev) => [
+        ...prev,
+        { from: "assistant", text: "Erreur de connexion à l'assistant." },
+      ]);
+    }
   }
-
   function handleSubmit(e) {
     e.preventDefault();
     poserQuestion(saisie, null);
@@ -39,21 +59,41 @@ export default function AssistantWidget() {
   return (
     <>
       {ouvert && (
-        <div className="assistant-panel" role="dialog" aria-label="Assistant réglementaire">
+        <div
+          className="assistant-panel"
+          role="dialog"
+          aria-label="Assistant réglementaire"
+        >
           <div className="assistant-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div className="assistant-avatar"><IconBot /></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div className="assistant-avatar">
+                <IconBot />
+              </div>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 13.5 }}>Assistant réglementaire</div>
-                <div style={{ fontSize: 11, color: 'rgba(239,233,223,0.6)' }}>Réponses basées sur les textes réglementaires officiels</div>
+                <div style={{ fontWeight: 700, fontSize: 13.5 }}>
+                  Assistant réglementaire
+                </div>
+                <div style={{ fontSize: 11, color: "rgba(239,233,223,0.6)" }}>
+                  Réponses basées sur les textes réglementaires officiels
+                </div>
               </div>
             </div>
-            <button type="button" onClick={() => setOuvert(false)} aria-label="Fermer l'assistant" className="assistant-close">✕</button>
+            <button
+              type="button"
+              onClick={() => setOuvert(false)}
+              aria-label="Fermer l'assistant"
+              className="assistant-close"
+            >
+              ✕
+            </button>
           </div>
 
           <div ref={scrollRef} className="assistant-messages">
             {messages.map((m, i) => (
-              <div key={i} className={`assistant-bubble ${m.from === 'user' ? 'assistant-bubble-user' : 'assistant-bubble-bot'}`}>
+              <div
+                key={i}
+                className={`assistant-bubble ${m.from === "user" ? "assistant-bubble-user" : "assistant-bubble-bot"}`}
+              >
                 {m.text}
               </div>
             ))}
@@ -61,7 +101,16 @@ export default function AssistantWidget() {
 
           <div className="assistant-quickreplies">
             {THEMATIQUES.map((t) => (
-              <button key={t.id} type="button" onClick={() => poserQuestion(`Que dit la réglementation sur : ${t.label} ?`, t.id)}>
+              <button
+                key={t.id}
+                type="button"
+                onClick={() =>
+                  poserQuestion(
+                    `Que dit la réglementation sur : ${t.label} ?`,
+                    t.id,
+                  )
+                }
+              >
                 {t.label}
               </button>
             ))}
@@ -75,7 +124,9 @@ export default function AssistantWidget() {
               placeholder="Écrivez votre question…"
               aria-label="Votre question"
             />
-            <button type="submit" aria-label="Envoyer"><IconSend /></button>
+            <button type="submit" aria-label="Envoyer">
+              <IconSend />
+            </button>
           </form>
         </div>
       )}
@@ -84,7 +135,11 @@ export default function AssistantWidget() {
         type="button"
         className="assistant-fab"
         onClick={() => setOuvert((v) => !v)}
-        aria-label={ouvert ? "Fermer l'assistant réglementaire" : "Ouvrir l'assistant réglementaire"}
+        aria-label={
+          ouvert
+            ? "Fermer l'assistant réglementaire"
+            : "Ouvrir l'assistant réglementaire"
+        }
         aria-expanded={ouvert}
       >
         <IconChat />
