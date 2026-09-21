@@ -15,7 +15,7 @@ export default function UtilisateurForm() {
     email: "",
     mot_de_passe: "",
     id_role: "",
-    id_filiale: "",
+    id_filiales: [],
     actif: true,
   });
   const [erreur, setErreur] = useState(null);
@@ -37,7 +37,7 @@ export default function UtilisateurForm() {
             email: u.email,
             mot_de_passe: "",
             id_role: u.id_role ?? "",
-            id_filiale: u.id_filiale ?? "",
+            id_filiales: (u.filiales ?? []).map((f) => f.id_filiale),
             actif: !!u.actif,
           });
         })
@@ -49,6 +49,18 @@ export default function UtilisateurForm() {
     setForm((f) => ({ ...f, [name]: value }));
   }
 
+  function basculerFiliale(idFiliale) {
+    setForm((f) => {
+      const deja = f.id_filiales.includes(idFiliale);
+      return {
+        ...f,
+        id_filiales: deja
+          ? f.id_filiales.filter((v) => v !== idFiliale)
+          : [...f.id_filiales, idFiliale],
+      };
+    });
+  }
+
   async function envoyer(e) {
     e.preventDefault();
     setEnvoi(true);
@@ -58,7 +70,7 @@ export default function UtilisateurForm() {
       nom: form.nom,
       email: form.email,
       id_role: form.id_role || null,
-      id_filiale: form.id_filiale || null,
+      id_filiales: form.id_filiales,
       actif: form.actif,
     };
     if (!estModification || form.mot_de_passe) {
@@ -162,19 +174,37 @@ export default function UtilisateurForm() {
 
             <div className="field">
               <label>
-                Filiale (laisser vide si accès à toutes les filiales)
+                Filiales (laisser tout décoché si accès à toutes les filiales)
               </label>
-              <select
-                value={form.id_filiale}
-                onChange={(e) => champ("id_filiale", e.target.value)}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                }}
               >
-                <option value="">Toutes filiales</option>
                 {filiales.map((f) => (
-                  <option key={f.id_filiale} value={f.id_filiale}>
+                  <label
+                    key={f.id_filiale}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      fontSize: 13,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form.id_filiales.includes(f.id_filiale)}
+                      onChange={() => basculerFiliale(f.id_filiale)}
+                    />
                     {f.libelle} ({f.code})
-                  </option>
+                  </label>
                 ))}
-              </select>
+              </div>
             </div>
 
             <label

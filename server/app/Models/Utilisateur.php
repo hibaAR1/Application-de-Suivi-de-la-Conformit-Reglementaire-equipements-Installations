@@ -25,6 +25,13 @@ class Utilisateur extends Model
     {
         return $this->belongsTo(Filiale::class, 'id_filiale');
     }
+
+    // Nouvelle relation multi-filiales : un utilisateur (ex. Référent HSE)
+    // peut être rattaché à plusieurs filiales précises.
+    public function filiales()
+    {
+        return $this->belongsToMany(Filiale::class, 'utilisateur_filiale', 'id_utilisateur', 'id_filiale');
+    }
     public function hasPermission(string $code): bool
 {
     return $this->role?->permissions->contains('code', $code) ?? false;

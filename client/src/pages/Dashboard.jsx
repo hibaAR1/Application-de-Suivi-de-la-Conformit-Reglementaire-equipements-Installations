@@ -83,7 +83,7 @@ export default function Dashboard() {
   const enRetard = echeances.filter((e) => e.statut === "retard");
 
   const tauxConformite = useMemo(() => {
-    if (equipements.length === 0) return 100;
+    if (equipements.length === 0) return null;
     const refsEnDefaut = new Set(
       reservesOuvertes
         .filter((r) => r.reserve.niveau_criticite === "Bloquante")
@@ -96,13 +96,15 @@ export default function Dashboard() {
 
   const onglets = user?.voitToutesFiliales
     ? [...filiales.map((f) => f.code), "GROUPE"]
-    : [user?.filialeCode];
+    : user?.filialesCodes?.length
+      ? user.filialesCodes
+      : [user?.filialeCode];
 
   return (
     <>
       <div className="topbar">
         <div>
-          {onglets.length > 1 ? (
+          {onglets.length > 1 && onglets[0] ? (
             <div className="eyebrow" style={{ display: "flex", gap: 6 }}>
               {onglets.map((code) => (
                 <button
@@ -156,12 +158,14 @@ export default function Dashboard() {
                     alignItems: "center",
                   }}
                 >
-                  <Gauge percent={tauxConformite} />
+                  <Gauge percent={tauxConformite ?? 0} />
                   <div className="gauge-label" style={{ marginTop: 8 }}>
                     Taux de conformité
                   </div>
                   <div className="stat-sub" style={{ marginTop: 2 }}>
-                    {equipements.length} équipements suivis
+                    {tauxConformite === null
+                      ? "Aucun équipement suivi"
+                      : `${equipements.length} équipements suivis`}
                   </div>
                 </div>
               </Plate>
@@ -270,7 +274,7 @@ export default function Dashboard() {
                               </div>
                             </td>
                             <td style={{ color: "var(--text-muted)" }}>
-                              {e.equipement.typeEquipement?.libelle ?? "—"}
+                              {e.equipement.type_equipement?.libelle ?? "—"}
                             </td>
                             <td className="mono">
                               {formatDateFR(e.prochaineEcheance)}
