@@ -30,7 +30,8 @@ export default function ReserveForm() {
       setErreur('Le justificatif de levée est obligatoire (PDF ou image).');
       return;
     }
-    leverReserve(controle.id, { justificatifNom: fichier.name, dateLeveeEffective: dateEffective });
+    //leverReserve(controle.id, { justificatifNom: fichier.name, dateLeveeEffective: dateEffective });
+    leverReserve(controle.id, { fichier, dateLeveeEffective: dateEffective });
     navigate(`/equipements/${controle.equipementRef}`);
   }
 
