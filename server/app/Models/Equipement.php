@@ -13,7 +13,7 @@ class Equipement extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'id_equipement', 'referentiel', 'id_filiale', 'id_type_equipement',
+        'id_equipement', 'referentiel', 'id_filiale', 'id_site', 'id_type_equipement',
         'designation', 'marque_modele', 'numero_serie',
         'date_mise_en_service', 'statut', 'qr_code',
     ];
@@ -22,15 +22,19 @@ class Equipement extends Model
     {
         return $this->hasMany(Controle::class, 'id_equipement');
     }
-    // app/Models/Equipement.php — ajoute ces 2 méthodes dans la classe
 
-public function filiale()
-{
-    return $this->belongsTo(Filiale::class, 'id_filiale');
-}
+    public function filiale()
+    {
+        return $this->belongsTo(Filiale::class, 'id_filiale');
+    }
 
-public function typeEquipement()
-{
-    return $this->belongsTo(TypeEquipement::class, 'id_type_equipement');
-}
+    public function site()
+    {
+        return $this->belongsTo(Site::class, 'id_site');
+    }
+
+    public function typeEquipement()
+    {
+        return $this->belongsTo(TypeEquipement::class, 'id_type_equipement');
+    }
 }

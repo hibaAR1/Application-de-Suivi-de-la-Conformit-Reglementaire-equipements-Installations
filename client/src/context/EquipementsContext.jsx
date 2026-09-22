@@ -28,6 +28,7 @@ const EquipementsContext = createContext(null);
 export function EquipementsProvider({ children }) {
   const [equipements, setEquipements] = useState([]);
   const [filiales, setFiliales] = useState([]);
+  const [sites, setSites] = useState([]);
   const [typesEquipement, setTypesEquipement] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState(null);
@@ -44,6 +45,9 @@ export function EquipementsProvider({ children }) {
     rafraichirEquipements();
     apiFetch("/filiales")
       .then(setFiliales)
+      .catch((e) => setErreur(e.message));
+    apiFetch("/sites")
+      .then(setSites)
       .catch((e) => setErreur(e.message));
     apiFetch("/type-equipements")
       .then(setTypesEquipement)
@@ -62,7 +66,14 @@ export function EquipementsProvider({ children }) {
     );
   }
 
-  // donnees attend : { codeFiliale, id_type_equipement, designation, marque_modele, numero_serie, date_mise_en_service, statut }
+  // Les sites d'une filiale donnée (pour filtrer le <select> Site selon la filiale choisie).
+  function sitesDeFiliale(codeFiliale) {
+    const filiale = filiales.find((f) => f.code === codeFiliale);
+    if (!filiale) return [];
+    return sites.filter((s) => s.id_filiale === filiale.id_filiale);
+  }
+
+  // donnees attend : { codeFiliale, id_site, id_type_equipement, designation, marque_modele, numero_serie, date_mise_en_service, statut }
   async function creerEquipement(donnees) {
     const id_equipement = genererIdentifiant(donnees.codeFiliale, equipements);
     const filiale = filiales.find((f) => f.code === donnees.codeFiliale);
@@ -70,6 +81,7 @@ export function EquipementsProvider({ children }) {
       id_equipement,
       referentiel: id_equipement,
       id_filiale: filiale?.id_filiale,
+      id_site: donnees.id_site || null,
       id_type_equipement: donnees.id_type_equipement,
       designation: donnees.designation,
       marque_modele: donnees.marque_modele,
@@ -91,6 +103,7 @@ export function EquipementsProvider({ children }) {
       : null;
     const corps = {
       ...(filiale ? { id_filiale: filiale.id_filiale } : {}),
+      id_site: donnees.id_site || null,
       id_type_equipement: donnees.id_type_equipement,
       designation: donnees.designation,
       marque_modele: donnees.marque_modele,
@@ -111,6 +124,8 @@ export function EquipementsProvider({ children }) {
   const value = {
     equipements,
     filiales,
+    sites,
+    sitesDeFiliale,
     typesEquipement,
     chargement,
     erreur,

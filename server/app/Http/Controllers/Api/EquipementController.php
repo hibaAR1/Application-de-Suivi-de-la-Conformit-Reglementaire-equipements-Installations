@@ -11,7 +11,7 @@ class EquipementController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Equipement::with(['filiale', 'typeEquipement', 'controles.reserves']);
+        $query = Equipement::with(['filiale', 'site', 'typeEquipement', 'controles.reserves']);
 
         if ($request->has('id_filiale')) {
             $query->where('id_filiale', $request->id_filiale);
@@ -22,7 +22,7 @@ class EquipementController extends Controller
 
     public function show($id)
     {
-        return Equipement::with(['filiale', 'typeEquipement', 'controles.reserves'])->findOrFail($id);
+        return Equipement::with(['filiale', 'site', 'typeEquipement', 'controles.reserves'])->findOrFail($id);
     }
 
     public function store(Request $request)
@@ -31,6 +31,7 @@ class EquipementController extends Controller
             'id_equipement' => 'required|string|unique:equipement',
             'referentiel' => 'required|string|unique:equipement',
             'id_filiale' => 'required|integer',
+            'id_site' => 'nullable|integer',
             'id_type_equipement' => 'required|integer',
             'designation' => 'required|string|max:100',
             'marque_modele' => 'nullable|string',
@@ -42,7 +43,7 @@ class EquipementController extends Controller
 
         $data['statut'] = $data['statut'] ?? 'En service';
 
-        return Equipement::create($data)->load(['filiale', 'typeEquipement']);
+        return Equipement::create($data)->load(['filiale', 'site', 'typeEquipement']);
     }
 
     // §3.1 du CDC : "Création, modification, archivage (pas de suppression
@@ -54,6 +55,7 @@ class EquipementController extends Controller
 
         $data = $request->validate([
             'id_filiale' => 'sometimes|integer',
+            'id_site' => 'nullable|integer',
             'id_type_equipement' => 'sometimes|integer',
             'designation' => 'sometimes|string|max:100',
             'marque_modele' => 'nullable|string',
@@ -64,6 +66,6 @@ class EquipementController extends Controller
 
         $equipement->update($data);
 
-        return $equipement->load(['filiale', 'typeEquipement']);
+        return $equipement->load(['filiale', 'site', 'typeEquipement']);
     }
 }
