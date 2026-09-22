@@ -10,8 +10,10 @@ return new class extends Migration
     {
         Schema::create('role_permission', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_role')->constrained('role', 'id_role')->cascadeOnDelete();
+            $table->integer('id_role');
             $table->foreignId('id_permission')->constrained('permission', 'id_permission')->cascadeOnDelete();
+
+            $table->foreign('id_role')->references('id_role')->on('role')->cascadeOnDelete();
         });
     }
 

@@ -9,8 +9,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('role', function (Blueprint $table) {
-            $table->id('id_role');
-            $table->string('libelle');
+            $table->integer('id_role', true, false);
+            $table->enum('libelle', [
+                'Technicien terrain', 'Référent HSE filiale', 'Administrateur SMI Holding',
+                'Consultation Direction', 'Super Admin',
+            ])->unique();
         });
     }
 
