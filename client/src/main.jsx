@@ -8,13 +8,15 @@ import { EquipementsProvider } from "./context/EquipementsContext";
 import "./styles/tokens.css";
 
 createRoot(document.getElementById("root")).render(
-  <AuthProvider>
-    <FilialeThemeProvider>
-      <EquipementsProvider>
-        <ControlesProvider>
-          <App />
-        </ControlesProvider>
-      </EquipementsProvider>
-    </FilialeThemeProvider>
-  </AuthProvider>,
+  <StrictMode>
+    <AuthProvider>
+      <FilialeThemeProvider>
+        <EquipementsProvider>
+          <ControlesProvider>
+            <App />
+          </ControlesProvider>
+        </EquipementsProvider>
+      </FilialeThemeProvider>
+    </AuthProvider>
+  </StrictMode>,
 );
