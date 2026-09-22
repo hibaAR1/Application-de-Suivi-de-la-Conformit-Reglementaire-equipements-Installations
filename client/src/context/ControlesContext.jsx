@@ -2,12 +2,17 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { getControles, creerControle, mettreAJourReserve } from '../utils/api';
 import { useAuth } from './AuthContext';
 
-// §3.2 du CDC — "Délai de levée réglementaire... Selon criticité", sans valeur chiffrée.
+// 3.2 du CDC — "Délai de levée réglementaire... Selon criticité", sans valeur chiffrée.
 // Valeurs provisoires pour que la logique fonctionne ; à faire valider avec la Direction SMI
-// (les mêmes valeurs doivent être alignées côté backend, dans Reserve.php).
+// (les mêmes valeurs doivent être alignées côté backend, dans ControleController.php).
 export const DELAI_LEVEE_PAR_CRITICITE = { Bloquante: 7, Majeure: 30, Mineure: 90 };
+
 export const NIVEAUX_CRITICITE = Object.keys(DELAI_LEVEE_PAR_CRITICITE);
-export const RESULTATS_CONTROLE = ['Favorable', 'Favorable avec réserves', 'Défavorable'];
+export const RESULTATS_CONTROLE = [
+  'Favorable',
+  'Favorable avec réserves',
+  'Défavorable',
+];
 
 // Le backend renvoie les données en snake_case (id_equipement, date_controle...)
 // avec un tableau "reserves". Le front (Controles.jsx, ReserveForm.jsx) attend du
@@ -44,7 +49,7 @@ export function ControlesProvider({ children }) {
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState(null);
 
-  // Récupère la liste des contrôles depuis l'API (remplace l'ancien SEED statique)
+  // Récupère la liste des contrôles depuis l'API
   const rafraichir = useCallback(async () => {
     setChargement(true);
     try {
@@ -58,9 +63,7 @@ export function ControlesProvider({ children }) {
     }
   }, []);
 
-  // Recharge la liste dès que le token change : au premier login, et à chaque
-  // reconnexion. Sans "token" en dépendance, le fetch initial se ferait avant
-  // que l'utilisateur soit connecté (token encore null) et ne se relancerait jamais.
+  // Recharge la liste dès que le token change : au premier login, et à chaque reconnexion.
   useEffect(() => {
     if (token) {
       rafraichir();
@@ -116,6 +119,9 @@ export function ControlesProvider({ children }) {
 
 export function useControles() {
   const ctx = useContext(ControlesContext);
-  if (!ctx) throw new Error('useControles() doit être utilisé à l\'intérieur de <ControlesProvider>.');
+  if (!ctx)
+    throw new Error(
+      "useControles() doit être utilisé à l'intérieur de <ControlesProvider>.",
+    );
   return ctx;
 }
