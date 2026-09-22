@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Plate from "../components/Plate";
 import Badge from "../components/Badge";
 import { useEquipements } from "../context/EquipementsContext";
-import { useAuth } from "../context/AuthContext";
+import { useFilialeTheme } from "../context/FilialeThemeContext";
 
 const STATUT_TONE = {
   "En service": "success",
@@ -12,33 +12,134 @@ const STATUT_TONE = {
   Réformé: "danger",
 };
 
-export default function EquipementsListe() {
-  const { equipements, chargement, erreur } = useEquipements();
-  const { user } = useAuth();
+const TITRES = { Fixe: "Équipements fixes", Mobile: "Engins mobiles" };
+
+// Icône "étiquette QR" — renvoie vers la fiche équipement, où l'étiquette est affichée.
+function IconQr() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <rect
+        x="3"
+        y="3"
+        width="7"
+        height="7"
+        rx="1"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <rect
+        x="14"
+        y="3"
+        width="7"
+        height="7"
+        rx="1"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <rect
+        x="3"
+        y="14"
+        width="7"
+        height="7"
+        rx="1"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <path
+        d="M14 14h3v3h-3zM19 14h2v2h-2zM14 19h2v2h-2zM19 19h2v2h-2z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+// Le contrôle le plus récent d'un équipement (pour les colonnes "Dernier Ctr." / "Prochain").
+function dernierControle(eq) {
+  if (!eq.controles?.length) return null;
+  return [...eq.controles].sort(
+    (a, b) => new Date(b.date_controle) - new Date(a.date_controle),
+  )[0];
+}
+
+// Nombre de réserves encore ouvertes (statut différent de "Clôturée").
+function reservesOuvertes(eq) {
+  return (eq.controles ?? []).reduce(
+    (total, c) =>
+      total + (c.reserves ?? []).filter((r) => r.statut !== "Clôturée").length,
+    0,
+  );
+}
+
+function formaterDate(date) {
+  if (!date) return "—";
+  return new Date(date).toLocaleDateString("fr-FR");
+}
+
+export default function EquipementsListe({ categorie }) {
+  const { equipements, typesEquipement, chargement, erreur } = useEquipements();
+  const { filiales, onglets, filialeActive } = useFilialeTheme();
   const [recherche, setRecherche] = useState("");
+  const [filialeFiltre, setFilialeFiltre] = useState("");
+  const [typeFiltre, setTypeFiltre] = useState("");
+  const [statutFiltre, setStatutFiltre] = useState("");
   const navigate = useNavigate();
+
+  const titre = TITRES[categorie] ?? "Équipements";
+
+  const typesDisponibles = useMemo(
+    () =>
+      categorie
+        ? typesEquipement.filter((t) => t.categorie === categorie)
+        : typesEquipement,
+    [typesEquipement, categorie],
+  );
 
   const filtres = useMemo(() => {
     const q = recherche.trim().toLowerCase();
-    if (!q) return equipements;
-    return equipements.filter(
-      (e) =>
-        e.id_equipement?.toLowerCase().includes(q) ||
-        e.designation?.toLowerCase().includes(q) ||
-        e.numero_serie?.toLowerCase().includes(q),
-    );
-  }, [equipements, recherche]);
+    return equipements.filter((e) => {
+      if (categorie && e.type_equipement?.categorie !== categorie) return false;
+      if (
+        filialeActive &&
+        filialeActive !== "GROUPE" &&
+        e.filiale?.code !== filialeActive
+      )
+        return false;
+      if (filialeFiltre && e.filiale?.code !== filialeFiltre) return false;
+      if (typeFiltre && String(e.id_type_equipement) !== String(typeFiltre))
+        return false;
+      if (statutFiltre && e.statut !== statutFiltre) return false;
+      if (
+        q &&
+        !(
+          e.id_equipement?.toLowerCase().includes(q) ||
+          e.designation?.toLowerCase().includes(q) ||
+          e.numero_serie?.toLowerCase().includes(q)
+        )
+      )
+        return false;
+      return true;
+    });
+  }, [
+    equipements,
+    recherche,
+    categorie,
+    filialeActive,
+    filialeFiltre,
+    typeFiltre,
+    statutFiltre,
+  ]);
 
   return (
     <>
       <div className="topbar">
         <div>
           <div className="eyebrow">
-            {user?.voitToutesFiliales
-              ? "Toutes filiales"
-              : `Filiale ${user?.filialeCode ?? ""}`}
+            {filialeActive === "GROUPE" || !filialeActive
+              ? "Toutes les filiales"
+              : (filiales.find((f) => f.code === filialeActive)?.libelle ??
+                `Filiale ${filialeActive}`)}
           </div>
-          <h1 style={{ fontSize: "22px" }}>Équipements</h1>
+          <h1 style={{ fontSize: "22px" }}>{titre}</h1>
         </div>
         <button
           className="btn btn-primary"
@@ -49,13 +150,67 @@ export default function EquipementsListe() {
       </div>
 
       <div className="content">
-        <div className="field" style={{ maxWidth: 320, marginBottom: 18 }}>
-          <input
-            type="text"
-            placeholder="Rechercher (référence, désignation, n° série)…"
-            value={recherche}
-            onChange={(e) => setRecherche(e.target.value)}
-          />
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 12,
+            marginBottom: 18,
+          }}
+        >
+          <div className="field" style={{ maxWidth: 280, marginBottom: 0 }}>
+            <input
+              type="text"
+              placeholder="Rechercher (référence, désignation, n° série)…"
+              value={recherche}
+              onChange={(e) => setRecherche(e.target.value)}
+            />
+          </div>
+
+          <div className="field" style={{ maxWidth: 200, marginBottom: 0 }}>
+            <select
+              value={filialeFiltre}
+              onChange={(e) => setFilialeFiltre(e.target.value)}
+            >
+              <option value="">Toutes les filiales</option>
+              {(onglets?.length
+                ? onglets.filter((c) => c !== "GROUPE")
+                : filiales.map((f) => f.code)
+              ).map((code) => (
+                <option key={code} value={code}>
+                  {filiales.find((f) => f.code === code)?.libelle ?? code}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="field" style={{ maxWidth: 220, marginBottom: 0 }}>
+            <select
+              value={typeFiltre}
+              onChange={(e) => setTypeFiltre(e.target.value)}
+            >
+              <option value="">Tous les types</option>
+              {typesDisponibles.map((t) => (
+                <option key={t.id_type_equipement} value={t.id_type_equipement}>
+                  {t.libelle}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="field" style={{ maxWidth: 200, marginBottom: 0 }}>
+            <select
+              value={statutFiltre}
+              onChange={(e) => setStatutFiltre(e.target.value)}
+            >
+              <option value="">Tous les statuts</option>
+              {Object.keys(STATUT_TONE).map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {erreur && (
@@ -75,39 +230,77 @@ export default function EquipementsListe() {
                 <table>
                   <thead>
                     <tr>
-                      <th>Référence</th>
-                      <th>Désignation</th>
+                      <th>Filiale</th>
+                      <th>Groupe</th>
                       <th>Type</th>
-                      <th>Périodicité</th>
+                      <th>Site</th>
+                      <th>Dernier Ctr.</th>
+                      <th>Prochain</th>
+                      <th>Réserves</th>
                       <th>Statut</th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filtres.map((eq) => (
-                      <tr
-                        key={eq.id_equipement}
-                        className="rowlink"
-                        onClick={() =>
-                          navigate(`/equipements/${eq.id_equipement}`)
-                        }
-                      >
-                        <td className="ref">{eq.id_equipement}</td>
-                        <td style={{ fontWeight: 600 }}>{eq.designation}</td>
-                        <td style={{ color: "var(--text-muted)" }}>
-                          {eq.type_equipement?.libelle ?? "—"}
-                        </td>
-                        <td>
-                          {eq.type_equipement?.periodicite_mois
-                            ? `${eq.type_equipement.periodicite_mois} mois`
-                            : "—"}
-                        </td>
-                        <td>
-                          <Badge tone={STATUT_TONE[eq.statut] ?? "success"}>
-                            {eq.statut}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
+                    {filtres.map((eq) => {
+                      const dernier = dernierControle(eq);
+                      const nbReserves = reservesOuvertes(eq);
+                      return (
+                        <tr key={eq.id_equipement} className="rowlink">
+                          <td style={{ fontWeight: 600 }}>
+                            {eq.filiale?.libelle ?? "—"}
+                          </td>
+                          <td>
+                            <Badge tone="success">
+                              {eq.filiale?.code ?? "—"}
+                            </Badge>
+                          </td>
+                          <td style={{ color: "var(--text-muted)" }}>
+                            {eq.type_equipement?.libelle ?? "—"}
+                          </td>
+                          <td>{eq.site?.libelle ?? "—"}</td>
+                          <td>{formaterDate(dernier?.date_controle)}</td>
+                          <td>{formaterDate(dernier?.prochaine_echeance)}</td>
+                          <td>
+                            {nbReserves > 0 ? (
+                              <Badge tone="warning">{nbReserves}</Badge>
+                            ) : (
+                              <Badge tone="success">0</Badge>
+                            )}
+                          </td>
+                          <td>
+                            <Badge tone={STATUT_TONE[eq.statut] ?? "success"}>
+                              {eq.statut}
+                            </Badge>
+                          </td>
+                          <td>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button
+                                type="button"
+                                className="btn btn-secondary"
+                                style={{ padding: "4px 10px", fontSize: 12.5 }}
+                                onClick={() =>
+                                  navigate(`/equipements/${eq.id_equipement}`)
+                                }
+                              >
+                                Ouvrir
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-secondary"
+                                title="Étiquette QR"
+                                style={{ padding: "4px 8px" }}
+                                onClick={() =>
+                                  navigate(`/equipements/${eq.id_equipement}`)
+                                }
+                              >
+                                <IconQr />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -121,7 +314,7 @@ export default function EquipementsListe() {
                   marginTop: 24,
                 }}
               >
-                Aucun équipement ne correspond à cette recherche.
+                Aucun équipement ne correspond à ces critères.
               </p>
             )}
           </>

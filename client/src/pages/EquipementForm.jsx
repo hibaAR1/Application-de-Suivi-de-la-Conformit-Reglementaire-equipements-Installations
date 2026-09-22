@@ -16,6 +16,7 @@ export default function EquipementForm() {
     creerEquipement,
     modifierEquipement,
     filiales,
+    sitesDeFiliale,
     typesEquipement,
   } = useEquipements();
   const existant = ref ? getByRef(ref) : null;
@@ -24,6 +25,7 @@ export default function EquipementForm() {
     existant
       ? {
           codeFiliale: existant.filiale?.code ?? "",
+          id_site: existant.id_site ?? "",
           id_type_equipement: existant.id_type_equipement,
           designation: existant.designation ?? "",
           marque_modele: existant.marque_modele ?? "",
@@ -33,6 +35,7 @@ export default function EquipementForm() {
         }
       : {
           codeFiliale: filiales[0]?.code ?? "",
+          id_site: "",
           id_type_equipement: typesEquipement[0]?.id_type_equipement ?? "",
           designation: "",
           marque_modele: "",
@@ -48,9 +51,15 @@ export default function EquipementForm() {
   const typeActuel = typesEquipement.find(
     (t) => t.id_type_equipement === Number(form.id_type_equipement),
   );
+  const sitesDisponibles = sitesDeFiliale(form.codeFiliale);
 
   function setChamp(champ, valeur) {
     setForm((f) => ({ ...f, [champ]: valeur }));
+  }
+
+  // Changer de filiale invalide le site choisi (les sites sont propres à une filiale).
+  function setFiliale(codeFiliale) {
+    setForm((f) => ({ ...f, codeFiliale, id_site: "" }));
   }
 
   function valider() {
@@ -75,6 +84,7 @@ export default function EquipementForm() {
     try {
       const donnees = {
         ...form,
+        id_site: form.id_site ? Number(form.id_site) : null,
         id_type_equipement: Number(form.id_type_equipement),
       };
       if (existant) {
@@ -115,11 +125,11 @@ export default function EquipementForm() {
               }}
             >
               <div className="field">
-                <label htmlFor="filiale">Filiale / Site</label>
+                <label htmlFor="filiale">Filiale</label>
                 <select
                   id="filiale"
                   value={form.codeFiliale}
-                  onChange={(e) => setChamp("codeFiliale", e.target.value)}
+                  onChange={(e) => setFiliale(e.target.value)}
                   disabled={!!existant}
                 >
                   {filiales.map((f) => (
@@ -130,29 +140,45 @@ export default function EquipementForm() {
                 </select>
               </div>
               <div className="field">
-                <label htmlFor="type">Type d'équipement</label>
+                <label htmlFor="site">Site</label>
                 <select
-                  id="type"
-                  value={form.id_type_equipement}
-                  onChange={(e) =>
-                    setChamp("id_type_equipement", e.target.value)
-                  }
+                  id="site"
+                  value={form.id_site}
+                  onChange={(e) => setChamp("id_site", e.target.value)}
                 >
-                  {typesEquipement.map((t) => (
-                    <option
-                      key={t.id_type_equipement}
-                      value={t.id_type_equipement}
-                    >
-                      {t.libelle}
+                  <option value="">—</option>
+                  {sitesDisponibles.map((s) => (
+                    <option key={s.id_site} value={s.id_site}>
+                      {s.libelle}
                     </option>
                   ))}
                 </select>
-                {erreurs.id_type_equipement && (
-                  <span style={{ color: "var(--danger)", fontSize: 11.5 }}>
-                    {erreurs.id_type_equipement}
-                  </span>
-                )}
               </div>
+            </div>
+
+            <div className="field">
+              <label htmlFor="type">Type d'équipement</label>
+              <select
+                id="type"
+                value={form.id_type_equipement}
+                onChange={(e) =>
+                  setChamp("id_type_equipement", e.target.value)
+                }
+              >
+                {typesEquipement.map((t) => (
+                  <option
+                    key={t.id_type_equipement}
+                    value={t.id_type_equipement}
+                  >
+                    {t.libelle}
+                  </option>
+                ))}
+              </select>
+              {erreurs.id_type_equipement && (
+                <span style={{ color: "var(--danger)", fontSize: 11.5 }}>
+                  {erreurs.id_type_equipement}
+                </span>
+              )}
             </div>
 
             <div className="field">

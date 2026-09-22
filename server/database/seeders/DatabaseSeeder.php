@@ -9,7 +9,8 @@ class DatabaseSeeder extends Seeder
     /**
      * Point d'entrée unique : organise et appelle tous les seeders,
      * dans le bon ordre (les rôles et filiales doivent exister avant
-     * les permissions et les utilisateurs qui en dépendent).
+     * les permissions et les utilisateurs qui en dépendent ; les sites
+     * doivent exister après les filiales).
      */
     public function run(): void
     {
@@ -18,6 +19,8 @@ class DatabaseSeeder extends Seeder
             FilialeSeeder::class,
             PermissionSeeder::class,
             UtilisateurSeeder::class,
+            TypeEquipementSeeder::class,
+            SiteSeeder::class,
         ]);
     }
 }
