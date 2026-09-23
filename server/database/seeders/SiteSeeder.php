@@ -12,42 +12,24 @@ class SiteSeeder extends Seeder
     {
         $filiales = Filiale::all()->keyBy('code');
 
-        // Ménara Prefa : plusieurs sites réels
-        $sitesMP = [
-            '201' => 'Ménara Prefa — Marrakech',
-            '202' => 'Ménara Prefa — Kelâa des Sraghna',
-            '203' => 'Ménara Prefa — Beni Mellal',
-            '204' => 'Ménara Prefa — Khouribga',
-            '205' => 'Ménara Prefa — Safi',
+        // Les 5 sites (villes) du groupe, disponibles pour toutes les filiales.
+        $sites = [
+            '201' => 'Marrakech',
+            '202' => 'Kelâa des Sraghna',
+            '203' => 'Beni Mellal',
+            '204' => 'Khouribga',
+            '205' => 'Safi',
         ];
 
-        if ($filiales->has('MP')) {
-            foreach ($sitesMP as $code => $libelle) {
+        foreach ($filiales as $codeFiliale => $filiale) {
+            foreach ($sites as $code => $ville) {
                 Site::firstOrCreate(
-                    ['code' => $code, 'id_filiale' => $filiales['MP']->id_filiale],
-                    ['libelle' => $libelle],
+                    ['code' => $code, 'id_filiale' => $filiale->id_filiale],
+                    ['libelle' => "{$filiale->libelle} — {$ville}"],
                 );
             }
         }
 
-        // Les autres filiales : un site par défaut, à compléter plus tard dans l'appli.
-        $autresDefauts = [
-            'CTM' => ['code' => 'CTM-01', 'libelle' => 'Carrières & Transport Ménara — Siège'],
-            'MT' => ['code' => 'MT-01', 'libelle' => 'Ménara Transport — Siège'],
-            'ML' => ['code' => 'ML-01', 'libelle' => 'Ménara Logistique — Siège'],
-            'TCGM' => ['code' => 'TCGM-01', 'libelle' => 'TCGM — Siège'],
-        ];
-
-        foreach ($autresDefauts as $codeFiliale => $site) {
-            if (!$filiales->has($codeFiliale)) {
-                continue;
-            }
-            Site::firstOrCreate(
-                ['code' => $site['code'], 'id_filiale' => $filiales[$codeFiliale]->id_filiale],
-                ['libelle' => $site['libelle']],
-            );
-        }
-
-        echo "✅ Sites créés ou déjà existants (5 pour MP, 1 par défaut pour les autres)\n";
+        echo "✅ " . count($sites) . " sites créés ou déjà existants pour chacune des " . $filiales->count() . " filiale(s)\n";
     }
 }
