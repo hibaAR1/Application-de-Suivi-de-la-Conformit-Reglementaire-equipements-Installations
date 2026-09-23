@@ -2,34 +2,38 @@
 
 namespace Database\Seeders;
 
-use App\Models\Filiale;
-use App\Models\Site;
+use App\Models\TypeEquipement;
 use Illuminate\Database\Seeder;
 
-class SiteSeeder extends Seeder
+class TypeEquipementSeeder extends Seeder
 {
     public function run(): void
     {
-        $filiales = Filiale::all()->keyBy('code');
-
-        // Les 5 sites (villes) du groupe, disponibles pour toutes les filiales.
-        $sites = [
-            '201' => 'Marrakech',
-            '202' => 'Kelâa des Sraghna',
-            '203' => 'Beni Mellal',
-            '204' => 'Khouribga',
-            '205' => 'Safi',
+        $types = [
+            // Fixe
+            'Transformateur' => 'Fixe',
+            'Armoire BT' => 'Fixe',
+            'Armoire Compensation' => 'Fixe',
+            // Mobile (géré par un collègue, mais on renseigne quand même la catégorie
+            // pour que le filtre "Équipements fixes" les exclue correctement)
+            'Chariot Élévateur' => 'Mobile',
+            'Grue Mobile' => 'Mobile',
+            'Camion Benne' => 'Mobile',
+            'Nacelle Élévatrice' => 'Mobile',
+            'Tracteur Routier' => 'Mobile',
         ];
 
-        foreach ($filiales as $codeFiliale => $filiale) {
-            foreach ($sites as $code => $ville) {
-                Site::firstOrCreate(
-                    ['code' => $code, 'id_filiale' => $filiale->id_filiale],
-                    ['libelle' => "{$filiale->libelle} — {$ville}"],
-                );
+        foreach ($types as $libelle => $categorie) {
+            // Si le type existe déjà (créé à la main dans l'appli), on met juste sa
+            // catégorie à jour sans toucher à sa périodicité de contrôle existante.
+            $type = TypeEquipement::firstOrNew(['libelle' => $libelle]);
+            $type->categorie = $categorie;
+            if (!$type->exists) {
+                $type->periodicite_controle = 12; // valeur par défaut, modifiable ensuite
             }
+            $type->save();
         }
 
-        echo "✅ " . count($sites) . " sites créés ou déjà existants pour chacune des " . $filiales->count() . " filiale(s)\n";
+        echo "✅ " . count($types) . " type(s) d'équipement mis à jour avec leur catégorie\n";
     }
 }
