@@ -2,14 +2,17 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Plate from "../components/Plate";
 import Badge from "../components/Badge";
+import EquipementModal from "../components/EquipementModal";
+import NouveauTypeModal from "../components/NouveauTypeModal";
+import NouveauGroupeModal from "../components/NouveauGroupeModal";
 import { useEquipements } from "../context/EquipementsContext";
 import { useFilialeTheme } from "../context/FilialeThemeContext";
+import { getGroupesPersonnalises } from "../utils/groupes";
 
 const STATUT_TONE = {
-  "En service": "success",
-  "En réserve": "warning",
-  "Hors service": "danger",
-  Réformé: "danger",
+  Conforme: "success",
+  "Conforme avec réserve": "warning",
+  "Non conforme": "danger",
 };
 
 const TITRES = { Fixe: "Équipements fixes", Mobile: "Engins mobiles" };
@@ -61,11 +64,11 @@ function dernierControle(eq) {
   )[0];
 }
 
-// Nombre de réserves encore ouvertes (statut différent de "Clôturée").
+// Nombre de réserves encore ouvertes (statut différent de "Levée").
 function reservesOuvertes(eq) {
   return (eq.controles ?? []).reduce(
     (total, c) =>
-      total + (c.reserves ?? []).filter((r) => r.statut !== "Clôturée").length,
+      total + (c.reserves ?? []).filter((r) => r.statut !== "Levée").length,
     0,
   );
 }
@@ -75,29 +78,43 @@ function formaterDate(date) {
   return new Date(date).toLocaleDateString("fr-FR");
 }
 
+// categorie : valeur initiale du filtre Fixe/Mobile ("Fixe" pour le lien "Équipements
+// fixes" du menu). L'utilisateur peut ensuite changer ce filtre depuis la page.
 export default function EquipementsListe({ categorie }) {
   const { equipements, typesEquipement, chargement, erreur } = useEquipements();
   const { filiales, onglets, filialeActive } = useFilialeTheme();
   const [recherche, setRecherche] = useState("");
   const [filialeFiltre, setFilialeFiltre] = useState("");
+  const [categorieFiltre, setCategorieFiltre] = useState(categorie ?? "");
   const [typeFiltre, setTypeFiltre] = useState("");
   const [statutFiltre, setStatutFiltre] = useState("");
+  const [fichierOuvert, setFichierOuvert] = useState(null);
+  const [nouveauTypeOuvert, setNouveauTypeOuvert] = useState(false);
+  const [nouveauGroupeOuvert, setNouveauGroupeOuvert] = useState(false);
+  const [versionGroupes, setVersionGroupes] = useState(0);
   const navigate = useNavigate();
 
-  const titre = TITRES[categorie] ?? "Équipements";
+  const titre = TITRES[categorieFiltre] ?? "Équipements";
 
-  const typesDisponibles = useMemo(
-    () =>
-      categorie
-        ? typesEquipement.filter((t) => t.categorie === categorie)
-        : typesEquipement,
-    [typesEquipement, categorie],
-  );
+  // Le menu "Type" affiche toujours TOUS les types (indépendant du filtre
+  // "Groupe" choisi) : les 3 types de base + tous ceux ajoutés depuis les popups "+".
+  const typesDisponibles = typesEquipement;
+
+  // Liste des groupes proposés : Fixe/Mobile, plus ceux réellement utilisés par
+  // les types existants, plus ceux créés à vide depuis la popup "+ nouveau groupe".
+  const groupesDisponibles = useMemo(() => {
+    const set = new Set(["Fixe", "Mobile"]);
+    typesEquipement.forEach((t) => t.categorie && set.add(t.categorie));
+    getGroupesPersonnalises().forEach((g) => set.add(g));
+    return Array.from(set);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typesEquipement, versionGroupes]);
 
   const filtres = useMemo(() => {
     const q = recherche.trim().toLowerCase();
     return equipements.filter((e) => {
-      if (categorie && e.type_equipement?.categorie !== categorie) return false;
+      if (categorieFiltre && e.type_equipement?.categorie !== categorieFiltre)
+        return false;
       if (
         filialeActive &&
         filialeActive !== "GROUPE" &&
@@ -122,12 +139,33 @@ export default function EquipementsListe({ categorie }) {
   }, [
     equipements,
     recherche,
-    categorie,
+    categorieFiltre,
     filialeActive,
     filialeFiltre,
     typeFiltre,
     statutFiltre,
   ]);
+
+  // Compteurs du sous-titre : sur l'ensemble filtré par filiale/recherche/type/statut,
+  // sans tenir compte du filtre Fixe/Mobile lui-même (pour afficher les deux totaux).
+  const compteurs = useMemo(() => {
+    const base = equipements.filter((e) => {
+      if (
+        filialeActive &&
+        filialeActive !== "GROUPE" &&
+        e.filiale?.code !== filialeActive
+      )
+        return false;
+      if (filialeFiltre && e.filiale?.code !== filialeFiltre) return false;
+      return true;
+    });
+    return {
+      total: base.length,
+      fixes: base.filter((e) => e.type_equipement?.categorie === "Fixe").length,
+      mobiles: base.filter((e) => e.type_equipement?.categorie === "Mobile")
+        .length,
+    };
+  }, [equipements, filialeActive, filialeFiltre]);
 
   return (
     <>
@@ -140,6 +178,12 @@ export default function EquipementsListe({ categorie }) {
                 `Filiale ${filialeActive}`)}
           </div>
           <h1 style={{ fontSize: "22px" }}>{titre}</h1>
+          <div
+            style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}
+          >
+            {compteurs.total} équipement(s) — {compteurs.mobiles} mobile(s) /{" "}
+            {compteurs.fixes} fixe(s)
+          </div>
         </div>
         <button
           className="btn btn-primary"
@@ -184,18 +228,55 @@ export default function EquipementsListe({ categorie }) {
             </select>
           </div>
 
-          <div className="field" style={{ maxWidth: 220, marginBottom: 0 }}>
-            <select
-              value={typeFiltre}
-              onChange={(e) => setTypeFiltre(e.target.value)}
+          <div style={{ display: "flex", gap: 6, marginBottom: 0 }}>
+            <div className="field" style={{ maxWidth: 180, marginBottom: 0 }}>
+              <select
+                value={categorieFiltre}
+                onChange={(e) => setCategorieFiltre(e.target.value)}
+              >
+                <option value="">Tous les groupes</option>
+                {groupesDisponibles.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              title="Créer un nouveau groupe"
+              onClick={() => setNouveauGroupeOuvert(true)}
             >
-              <option value="">Tous les types</option>
-              {typesDisponibles.map((t) => (
-                <option key={t.id_type_equipement} value={t.id_type_equipement}>
-                  {t.libelle}
-                </option>
-              ))}
-            </select>
+              +
+            </button>
+          </div>
+
+          <div style={{ display: "flex", gap: 6, marginBottom: 0 }}>
+            <div className="field" style={{ maxWidth: 220, marginBottom: 0 }}>
+              <select
+                value={typeFiltre}
+                onChange={(e) => setTypeFiltre(e.target.value)}
+              >
+                <option value="">Tous les types</option>
+                {typesDisponibles.map((t) => (
+                  <option
+                    key={t.id_type_equipement}
+                    value={t.id_type_equipement}
+                  >
+                    {t.libelle}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              title="Créer un nouveau type d'équipement"
+              onClick={() => setNouveauTypeOuvert(true)}
+            >
+              +
+            </button>
           </div>
 
           <div className="field" style={{ maxWidth: 200, marginBottom: 0 }}>
@@ -203,7 +284,7 @@ export default function EquipementsListe({ categorie }) {
               value={statutFiltre}
               onChange={(e) => setStatutFiltre(e.target.value)}
             >
-              <option value="">Tous les statuts</option>
+              <option value="">Tous statuts</option>
               {Object.keys(STATUT_TONE).map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -230,6 +311,7 @@ export default function EquipementsListe({ categorie }) {
                 <table>
                   <thead>
                     <tr>
+                      <th>Code</th>
                       <th>Filiale</th>
                       <th>Groupe</th>
                       <th>Type</th>
@@ -247,12 +329,21 @@ export default function EquipementsListe({ categorie }) {
                       const nbReserves = reservesOuvertes(eq);
                       return (
                         <tr key={eq.id_equipement} className="rowlink">
+                          <td className="ref">{eq.id_equipement}</td>
                           <td style={{ fontWeight: 600 }}>
                             {eq.filiale?.libelle ?? "—"}
                           </td>
                           <td>
-                            <Badge tone="success">
-                              {eq.filiale?.code ?? "—"}
+                            <Badge
+                              tone={
+                                eq.type_equipement?.categorie === "Mobile"
+                                  ? "warning"
+                                  : "success"
+                              }
+                            >
+                              {eq.type_equipement?.categorie ??
+                                eq.filiale?.code ??
+                                "—"}
                             </Badge>
                           </td>
                           <td style={{ color: "var(--text-muted)" }}>
@@ -277,10 +368,10 @@ export default function EquipementsListe({ categorie }) {
                             <div style={{ display: "flex", gap: 6 }}>
                               <button
                                 type="button"
-                                className="btn btn-secondary"
+                                className="btn btn-primary"
                                 style={{ padding: "4px 10px", fontSize: 12.5 }}
                                 onClick={() =>
-                                  navigate(`/equipements/${eq.id_equipement}`)
+                                  setFichierOuvert(eq.id_equipement)
                                 }
                               >
                                 Ouvrir
@@ -291,7 +382,7 @@ export default function EquipementsListe({ categorie }) {
                                 title="Étiquette QR"
                                 style={{ padding: "4px 8px" }}
                                 onClick={() =>
-                                  navigate(`/equipements/${eq.id_equipement}`)
+                                  setFichierOuvert(eq.id_equipement)
                                 }
                               >
                                 <IconQr />
@@ -320,6 +411,31 @@ export default function EquipementsListe({ categorie }) {
           </>
         )}
       </div>
+
+      {fichierOuvert && (
+        <EquipementModal
+          id={fichierOuvert}
+          onClose={() => setFichierOuvert(null)}
+        />
+      )}
+
+      {nouveauTypeOuvert && (
+        <NouveauTypeModal
+          onClose={() => setNouveauTypeOuvert(false)}
+          onCree={(type) => setTypeFiltre(String(type.id_type_equipement))}
+        />
+      )}
+
+      {nouveauGroupeOuvert && (
+        <NouveauGroupeModal
+          onClose={() => setNouveauGroupeOuvert(false)}
+          onCree={(groupe) => {
+            setVersionGroupes((v) => v + 1);
+            setCategorieFiltre(groupe);
+            setTypeFiltre("");
+          }}
+        />
+      )}
     </>
   );
 }

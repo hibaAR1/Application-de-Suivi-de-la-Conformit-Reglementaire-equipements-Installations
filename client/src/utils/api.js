@@ -8,7 +8,6 @@ export async function apiFetch(path, options = {}) {
     ...options,
     headers: {
       Accept: "application/json",
-      // Avec FormData, le navigateur met lui-même le Content-Type (multipart + boundary)
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,

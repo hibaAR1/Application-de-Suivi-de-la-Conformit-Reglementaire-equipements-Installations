@@ -24,6 +24,10 @@ function App() {
           <Route element={<AppLayout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/equipements" element={<EquipementsListe />} />
+            <Route
+              path="/equipements/fixes"
+              element={<EquipementsListe categorie="Fixe" />}
+            />
             <Route path="/equipements/nouveau" element={<EquipementForm />} />
             <Route
               path="/equipements/:ref/modifier"

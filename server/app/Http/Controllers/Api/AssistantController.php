@@ -52,6 +52,53 @@ TEXT;
             . "- Types d'équipement et périodicité : {$types}";
     }
 
+    private function contexteEquipement(Equipement $eq): string
+    {
+        $type = $eq->typeEquipement;
+        $caracteristiques = collect($eq->caracteristiques ?? [])
+            ->map(fn ($valeur, $cle) => "{$cle}: {$valeur}")
+            ->implode(', ');
+
+        return "Équipement : {$eq->designation} ({$eq->id_equipement})\n"
+            . 'Type : ' . ($type->libelle ?? '—') . ' (' . ($type->categorie ?? '—') . ")\n"
+            . 'Filiale : ' . ($eq->filiale->libelle ?? '—') . ' — Site : ' . ($eq->site->libelle ?? '—') . "\n"
+            . "Statut : {$eq->statut}\n"
+            . 'Caractéristiques : ' . ($caracteristiques ?: 'non renseignées');
+    }
+
+       private function genererTexte(string $prompt): string
+    {
+        $apiKey = config('services.gemini.key');
+
+        $response = Http::post(
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={$apiKey}",
+            ['contents' => [['role' => 'user', 'parts' => [['text' => $prompt]]]]]
+        );
+
+        $texte = $response->json('candidates.0.content.parts.0.text');
+
+        if (!$texte) {
+            \Log::error('Assistant IA — réponse Gemini inattendue', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+        }
+
+        return $texte ?? 'Une erreur est survenue, réessayez ou contactez votre Référent HSE.';
+    }
+
+    private function journaliser(?string $idEquipement, string $question, string $reponse, string $thematique): void
+    {
+        QuestionAssistant::create([
+            'id_utilisateur' => request()->user()->id_utilisateur,
+            'id_equipement' => $idEquipement,
+            'question' => $question,
+            'reponse' => $reponse,
+            'thematique' => $thematique,
+            'date_heure' => now(),
+        ]);
+    }
+
     public function poser(Request $request)
     {
         $data = $request->validate([
@@ -59,26 +106,39 @@ TEXT;
             'thematique' => 'nullable|string',
         ]);
 
-        $apiKey = config('services.gemini.key');
         $prompt = self::PERIMETRE . "\n\n" . $this->contexteDonnees() . "\n\nQuestion : " . $data['question'];
+        $reponse = $this->genererTexte($prompt);
 
-        $response = Http::post(
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={$apiKey}",
-            ['contents' => [['role' => 'user', 'parts' => [['text' => $prompt]]]]]
-        );
+        $this->journaliser(null, $data['question'], $reponse, $data['thematique'] ?? 'question_libre');
 
-        $reponseTexte = $response->json('candidates.0.content.parts.0.text')
-            ?? "Une erreur est survenue, réessayez ou contactez votre Référent HSE.";
+        return response()->json(['reponse' => $reponse]);
+    }
 
-        QuestionAssistant::create([
-            'id_utilisateur' => $request->user()->id_utilisateur,
-            'id_equipement' => null,
-            'question' => $data['question'],
-            'reponse' => $reponseTexte,
-            'thematique' => $data['thematique'] ?? null,
-            'date_heure' => now(),
-        ]);
+    public function planAction($idEquipement)
+    {
+        $eq = Equipement::with(['typeEquipement', 'filiale', 'site'])->findOrFail($idEquipement);
 
-        return response()->json(['reponse' => $reponseTexte]);
+        $prompt = self::PERIMETRE . "\n\n" . $this->contexteEquipement($eq)
+            . "\n\nRédige un plan d'action de mise en conformité réglementaire pour cet équipement : "
+            . '3 à 5 actions concrètes et priorisées, sous forme de liste à puces courte.';
+
+        $reponse = $this->genererTexte($prompt);
+        $this->journaliser($idEquipement, "Plan d'action", $reponse, 'plan_action');
+
+        return response()->json(['reponse' => $reponse]);
+    }
+
+    public function pointsControle($idEquipement)
+    {
+        $eq = Equipement::with(['typeEquipement', 'filiale', 'site'])->findOrFail($idEquipement);
+
+        $prompt = self::PERIMETRE . "\n\n" . $this->contexteEquipement($eq)
+            . "\n\nListe les points de contrôle réglementaires à vérifier lors du prochain contrôle de cet équipement : "
+            . '4 à 6 points, sous forme de liste à puces courte.';
+
+        $reponse = $this->genererTexte($prompt);
+        $this->journaliser($idEquipement, 'Points de contrôle', $reponse, 'points_controle');
+
+        return response()->json(['reponse' => $reponse]);
     }
 }

@@ -47,10 +47,7 @@
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; height: 100%; }
 body {
-  background:
-    linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0/32px 32px,
-    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px) 0 0/32px 32px,
-    var(--bg);
+  background: var(--bg);
   color: var(--text);
   font-family: 'IBM Plex Sans', system-ui, sans-serif;
   font-size: 14px;
@@ -71,13 +68,16 @@ a { color: inherit; text-decoration: none; }
 
 .app-shell { display: flex; min-height: 100vh; container-type: inline-size; }
 .sidebar { width: 252px; flex-shrink: 0; background: #0C0B0A; color: #EFE9DF; display: flex; flex-direction: column; padding: 22px 15px; }
-.brand { display: flex; align-items: center; gap: 10px; padding: 2px 6px 26px; }
+.brand { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 2px 6px 14px; }
+
 .brand-mark { width: 34px; height: 34px; background: var(--gold); display: flex; align-items: center; justify-content: center; font-family: 'Archivo', sans-serif; font-weight: 800; color: var(--gold-contrast, #1C1917); font-size: 14px; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); flex-shrink: 0; }
 .brand-logo { display: flex; align-items: center; background: #fff; border-radius: 8px; padding: 8px 10px; width: 100%; }
 .brand-logo img { display: block; width: 100%; height: auto; max-height: 40px; object-fit: contain; }
 .sidebar .brand-mark { display: none; }
 .brand-text { font-family: 'Archivo', sans-serif; font-weight: 700; font-size: 14px; line-height: 1.2; white-space: nowrap; }
 .brand-text span { display: block; font-family: 'IBM Plex Mono', monospace; font-weight: 400; font-size: 10px; letter-spacing: 0.04em; opacity: 0.55; margin-top: 3px; text-transform: uppercase; }
+.filiale-select { width: 100%; margin-bottom: 18px; background: rgba(239,233,223,0.08); border: 1px solid rgba(239,233,223,0.15); color: #EFE9DF; border-radius: 6px; padding: 8px 10px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; cursor: pointer; }
+.filiale-select option { background: #0C0B0A; color: #EFE9DF; }
 .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 6px; color: rgba(239, 233, 223, 0.7); background: none; border: none; width: 100%; text-align: left; font-size: 13.5px; font-weight: 500; margin-bottom: 1px; }
 .nav-item svg { flex-shrink: 0; }
 .nav-item.active { background: rgba(239, 233, 223, 0.09); color: #fff; box-shadow: inset 2px 0 0 var(--gold); }
@@ -105,7 +105,7 @@ a { color: inherit; text-decoration: none; }
   .brand { padding-bottom: 22px; 
     .brand-logo { display: none; }
   .sidebar .brand-mark { display: flex; }}
-  .brand-text, .nav-section-label, .user-name, .user-role, .nav-label { display: none; }
+    .brand-text, .nav-section-label, .user-name, .user-role, .nav-label, .filiale-select { display: none; }
   .nav-item { justify-content: center; padding: 11px; }
   .hero-row { grid-template-columns: 240px 1fr; }
   .content { padding: 24px 22px 50px; }

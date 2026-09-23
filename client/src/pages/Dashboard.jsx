@@ -21,20 +21,12 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [filiales, setFiliales] = useState([]);
-  const { filialeActive, setFilialeActive } = useFilialeTheme();
+  // La filiale active et la liste des filiales viennent maintenant du contexte
+  // partagé (chargées une seule fois, utilisées aussi par la Sidebar).
+  const { filialeActive, filiales } = useFilialeTheme();
   const [equipements, setEquipements] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState(null);
-
-  // Charge la liste des filiales seulement si l'utilisateur peut basculer entre elles
-  useEffect(() => {
-    if (!user?.voitToutesFiliales) return;
-    apiFetch("/filiales")
-      .then(setFiliales)
-      .catch((e) => setErreur(e.message));
-  }, [user]);
-
   // Charge les équipements (+ contrôles + réserves) selon la filiale active
   useEffect(() => {
     setChargement(true);
@@ -95,41 +87,16 @@ export default function Dashboard() {
     );
   }, [equipements, reservesOuvertes]);
 
-  const onglets = user?.voitToutesFiliales
-    ? [...filiales.map((f) => f.code), "GROUPE"]
-    : user?.filialesCodes?.length
-      ? user.filialesCodes
-      : [user?.filialeCode];
-
   return (
     <>
       <div className="topbar">
         <div>
-          {onglets.length > 1 && onglets[0] ? (
-            <div className="eyebrow" style={{ display: "flex", gap: 6 }}>
-              {onglets.map((code) => (
-                <button
-                  key={code}
-                  onClick={() => setFilialeActive(code)}
-                  className={code === filialeActive ? "tab active" : "tab"}
-                  style={{
-                    border: "none",
-                    background:
-                      code === filialeActive ? "var(--gold)" : "transparent",
-                    padding: "4px 10px",
-                    borderRadius: 6,
-                    cursor: "pointer",
-                    fontSize: 12,
-                    fontWeight: 600,
-                  }}
-                >
-                  {code === "GROUPE" ? "Groupe" : code}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="eyebrow">Filiale {user?.filialeCode}</div>
-          )}
+          <div className="eyebrow">
+            {filialeActive === "GROUPE"
+              ? "Toutes les filiales"
+              : (filiales.find((f) => f.code === filialeActive)?.libelle ??
+                `Filiale ${filialeActive ?? ""}`)}
+          </div>
           <h1 style={{ fontSize: "22px" }}>Tableau de bord</h1>
         </div>
         <button
