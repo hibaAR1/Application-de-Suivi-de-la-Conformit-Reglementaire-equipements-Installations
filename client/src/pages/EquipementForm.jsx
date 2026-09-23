@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Plate from "../components/Plate";
+import NouveauTypeModal from "../components/NouveauTypeModal";
 import {
   useEquipements,
   STATUTS_EQUIPEMENT,
@@ -31,22 +32,23 @@ export default function EquipementForm() {
           marque_modele: existant.marque_modele ?? "",
           numero_serie: existant.numero_serie ?? "",
           date_mise_en_service: existant.date_mise_en_service ?? "",
-          statut: existant.statut ?? "En service",
+          statut: existant.statut ?? "Conforme",
         }
       : {
           codeFiliale: filiales[0]?.code ?? "",
           id_site: "",
-          id_type_equipement: typesEquipement[0]?.id_type_equipement ?? "",
+          id_type_equipement: "",
           designation: "",
           marque_modele: "",
           numero_serie: "",
           date_mise_en_service: "",
-          statut: "En service",
+          statut: "Conforme",
         },
   );
   const [erreurs, setErreurs] = useState({});
   const [envoi, setEnvoi] = useState(false);
   const [erreurApi, setErreurApi] = useState("");
+  const [nouveauTypeOuvert, setNouveauTypeOuvert] = useState(false);
 
   const typeActuel = typesEquipement.find(
     (t) => t.id_type_equipement === Number(form.id_type_equipement),
@@ -60,6 +62,12 @@ export default function EquipementForm() {
   // Changer de filiale invalide le site choisi (les sites sont propres à une filiale).
   function setFiliale(codeFiliale) {
     setForm((f) => ({ ...f, codeFiliale, id_site: "" }));
+  }
+
+  // Appelé quand la popup "+ Nouveau type" a créé le type : on le sélectionne
+  // directement dans le <select> Type de ce formulaire.
+  function surNouveauType(type) {
+    setChamp("id_type_equipement", type.id_type_equipement);
   }
 
   function valider() {
@@ -158,22 +166,28 @@ export default function EquipementForm() {
 
             <div className="field">
               <label htmlFor="type">Type d'équipement</label>
-              <select
-                id="type"
-                value={form.id_type_equipement}
-                onChange={(e) =>
-                  setChamp("id_type_equipement", e.target.value)
-                }
-              >
-                {typesEquipement.map((t) => (
-                  <option
-                    key={t.id_type_equipement}
-                    value={t.id_type_equipement}
-                  >
-                    {t.libelle}
-                  </option>
-                ))}
-              </select>
+              <div style={{ display: "flex", gap: 8 }}>
+                <select
+                  id="type"
+                  style={{ flex: 1 }}
+                  value={form.id_type_equipement}
+                  onChange={(e) =>
+                    setChamp("id_type_equipement", e.target.value)
+                  }
+                >
+                  {typesEquipement.map((t) => (
+                    <option value="">—</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  title="Créer un nouveau type d'équipement"
+                  onClick={() => setNouveauTypeOuvert(true)}
+                >
+                  +
+                </button>
+              </div>
               {erreurs.id_type_equipement && (
                 <span style={{ color: "var(--danger)", fontSize: 11.5 }}>
                   {erreurs.id_type_equipement}
@@ -258,7 +272,7 @@ export default function EquipementForm() {
                 <label>Périodicité de contrôle (mois)</label>
                 <input
                   type="number"
-                  value={typeActuel?.periodicite_mois ?? ""}
+                  value={typeActuel?.periodicite_controle ?? ""}
                   disabled
                 />
                 <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
@@ -280,17 +294,6 @@ export default function EquipementForm() {
                   </option>
                 ))}
               </select>
-            </div>
-
-            <div
-              style={{
-                fontSize: 11.5,
-                color: "var(--text-muted)",
-                marginBottom: 18,
-              }}
-            >
-              L'identifiant et le QR code sont générés automatiquement à
-              l'enregistrement (§3.1).
             </div>
 
             {erreurApi && (
@@ -328,6 +331,13 @@ export default function EquipementForm() {
           </form>
         </Plate>
       </div>
+
+      {nouveauTypeOuvert && (
+        <NouveauTypeModal
+          onClose={() => setNouveauTypeOuvert(false)}
+          onCree={surNouveauType}
+        />
+      )}
     </>
   );
 }

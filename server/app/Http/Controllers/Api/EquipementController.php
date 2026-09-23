@@ -22,7 +22,7 @@ class EquipementController extends Controller
 
     public function show($id)
     {
-        return Equipement::with(['filiale', 'site', 'typeEquipement', 'controles.reserves'])->findOrFail($id);
+        return Equipement::with(['filiale', 'site', 'typeEquipement', 'controles.reserves', 'rapports'])->findOrFail($id);
     }
 
     public function store(Request $request)
@@ -37,18 +37,22 @@ class EquipementController extends Controller
             'marque_modele' => 'nullable|string',
             'numero_serie' => 'required|string|unique:equipement',
             'date_mise_en_service' => 'required|date',
-            'statut' => 'nullable|in:En service,Hors service,En réserve,Réformé',
+           'statut' => 'nullable|in:Conforme,Conforme avec réserve,Non conforme',
+
             'qr_code' => 'nullable|string',
+            'immatriculation' => 'nullable|string|max:50',
+            'fabricant' => 'nullable|string|max:100',
+            'modele' => 'nullable|string|max:100',
+            'annee_fabrication' => 'nullable|integer|min:1950|max:2100',
+            'organisme_controle' => 'nullable|string|max:150',
+            'caracteristiques' => 'nullable|array',
         ]);
 
-        $data['statut'] = $data['statut'] ?? 'En service';
+        $data['statut'] = $data['statut'] ?? 'Conforme';
 
         return Equipement::create($data)->load(['filiale', 'site', 'typeEquipement']);
     }
 
-    // §3.1 du CDC : "Création, modification, archivage (pas de suppression
-    // physique — traçabilité) des fiches équipement." — méthode manquante,
-    // nécessaire pour que la route PUT /equipements/{id} de l'apiResource fonctionne.
     public function update(Request $request, $id)
     {
         $equipement = Equipement::findOrFail($id);
@@ -61,7 +65,13 @@ class EquipementController extends Controller
             'marque_modele' => 'nullable|string',
             'numero_serie' => ['sometimes', 'string', Rule::unique('equipement')->ignore($id, 'id_equipement')],
             'date_mise_en_service' => 'sometimes|date',
-            'statut' => 'sometimes|in:En service,Hors service,En réserve,Réformé',
+            'statut' => 'sometimes|in:Conforme,Conforme avec réserve,Non conforme',
+            'immatriculation' => 'nullable|string|max:50',
+            'fabricant' => 'nullable|string|max:100',
+            'modele' => 'nullable|string|max:100',
+            'annee_fabrication' => 'nullable|integer|min:1950|max:2100',
+            'organisme_controle' => 'nullable|string|max:150',
+            'caracteristiques' => 'nullable|array',
         ]);
 
         $equipement->update($data);

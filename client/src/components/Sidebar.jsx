@@ -12,13 +12,14 @@ import {
 
 const NAV_ITEMS = [
   { to: "/", label: "Tableau de bord", icon: IconGrid, end: true },
-  { to: "/equipements", label: "Équipements", icon: IconBox },
+  { to: "/equipements/fixes", label: "Équipements fixes", icon: IconBox },
   { to: "/controles", label: "Contrôles & réserves", icon: IconClipboard },
 ];
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
-  const { filialeActive, nom, initiales } = useFilialeTheme();
+  const { filialeActive, setFilialeActive, nom, filiales, onglets } =
+    useFilialeTheme();
   const roleLabel = user ? `${user.role} · ${user.filialeLibelle}` : "";
   const logo = LOGOS_FILIALE[filialeActive] ?? LOGOS_FILIALE.GROUPE;
 
@@ -28,8 +29,29 @@ export default function Sidebar() {
         <div className="brand-logo">
           <img src={logo} alt={nom} />
         </div>
-        <div className="brand-mark">{initiales}</div>
+        <div className="brand-text">
+          {nom}
+          <span>{roleLabel}</span>
+        </div>
       </div>
+
+      {onglets.length > 1 && (
+        <select
+          value={filialeActive ?? ""}
+          onChange={(e) => setFilialeActive(e.target.value)}
+          className="filiale-select"
+          title="Changer de filiale"
+        >
+          {onglets.map((code) => (
+            <option key={code} value={code}>
+              {code === "GROUPE"
+                ? "Toutes les filiales (Groupe)"
+                : (filiales.find((f) => f.code === code)?.libelle ?? code)}
+            </option>
+          ))}
+        </select>
+      )}
+
       <nav>
         {NAV_ITEMS.map((item) => (
           <NavLink

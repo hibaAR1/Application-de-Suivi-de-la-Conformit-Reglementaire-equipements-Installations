@@ -16,6 +16,12 @@ class Equipement extends Model
         'id_equipement', 'referentiel', 'id_filiale', 'id_site', 'id_type_equipement',
         'designation', 'marque_modele', 'numero_serie',
         'date_mise_en_service', 'statut', 'qr_code',
+        'immatriculation', 'fabricant', 'modele', 'annee_fabrication',
+        'organisme_controle', 'caracteristiques',
+    ];
+
+    protected $casts = [
+        'caracteristiques' => 'array',
     ];
 
     public function controles()
@@ -36,5 +42,10 @@ class Equipement extends Model
     public function typeEquipement()
     {
         return $this->belongsTo(TypeEquipement::class, 'id_type_equipement');
+    }
+
+    public function rapports()
+    {
+        return $this->hasMany(Rapport::class, 'id_equipement');
     }
 }

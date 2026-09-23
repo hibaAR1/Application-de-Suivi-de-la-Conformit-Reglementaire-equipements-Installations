@@ -8,13 +8,10 @@ import {
 import { apiFetch } from "../utils/api";
 
 export const STATUTS_EQUIPEMENT = [
-  "En service",
-  "Hors service",
-  "En réserve",
-  "Réformé",
+  "Conforme",
+  "Conforme avec réserve",
+  "Non conforme",
 ];
-
-// §3.1 du CDC : "Identifiant équipement — Généré automatiquement (préfixe filiale + numéro séquentiel)".
 function genererIdentifiant(codeFiliale, equipementsExistants) {
   const count =
     equipementsExistants.filter((e) =>
@@ -41,6 +38,12 @@ export function EquipementsProvider({ children }) {
       .finally(() => setChargement(false));
   }, []);
 
+  const rafraichirTypes = useCallback(() => {
+    return apiFetch("/type-equipements")
+      .then(setTypesEquipement)
+      .catch((e) => setErreur(e.message));
+  }, []);
+
   useEffect(() => {
     rafraichirEquipements();
     apiFetch("/filiales")
@@ -49,12 +52,9 @@ export function EquipementsProvider({ children }) {
     apiFetch("/sites")
       .then(setSites)
       .catch((e) => setErreur(e.message));
-    apiFetch("/type-equipements")
-      .then(setTypesEquipement)
-      .catch((e) => setErreur(e.message));
-  }, [rafraichirEquipements]);
+    rafraichirTypes();
+  }, [rafraichirEquipements, rafraichirTypes]);
 
-  // Un "ref" peut être soit l'identifiant texte (CTM-0089), soit l'id numérique — on gère les deux.
   function getByRef(ref) {
     if (!ref) return null;
     return (
@@ -66,14 +66,12 @@ export function EquipementsProvider({ children }) {
     );
   }
 
-  // Les sites d'une filiale donnée (pour filtrer le <select> Site selon la filiale choisie).
   function sitesDeFiliale(codeFiliale) {
     const filiale = filiales.find((f) => f.code === codeFiliale);
     if (!filiale) return [];
     return sites.filter((s) => s.id_filiale === filiale.id_filiale);
   }
 
-  // donnees attend : { codeFiliale, id_site, id_type_equipement, designation, marque_modele, numero_serie, date_mise_en_service, statut }
   async function creerEquipement(donnees) {
     const id_equipement = genererIdentifiant(donnees.codeFiliale, equipements);
     const filiale = filiales.find((f) => f.code === donnees.codeFiliale);
@@ -121,6 +119,65 @@ export function EquipementsProvider({ children }) {
     return maj;
   }
 
+  async function modifierDetailsEquipement(id, details) {
+    const maj = await apiFetch(`/equipements/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(details),
+    });
+    setEquipements((prev) =>
+      prev.map((e) => (e.id_equipement === id ? { ...e, ...maj } : e)),
+    );
+    return maj;
+  }
+
+  async function creerTypeEquipement({
+    libelle,
+    categorie,
+    periodiciteControle,
+    caracteristiques,
+  }) {
+    const type = await apiFetch("/type-equipements", {
+      method: "POST",
+      body: JSON.stringify({
+        libelle,
+        categorie,
+        periodicite_controle: periodiciteControle,
+        caracteristiques: caracteristiques ?? [],
+      }),
+    });
+    setTypesEquipement((prev) => [...prev, type]);
+    return type;
+  }
+
+  function recupererRapports(idEquipement) {
+    return apiFetch(`/equipements/${idEquipement}/rapports`);
+  }
+
+  async function ajouterRapport(
+    idEquipement,
+    { dateRapport, organisme, reference, constatations, fichier },
+  ) {
+    const corps = new FormData();
+    corps.append("date_rapport", dateRapport);
+    corps.append("organisme", organisme);
+    if (reference) corps.append("reference", reference);
+    if (constatations) corps.append("constatations", constatations);
+    if (fichier) corps.append("fichier", fichier);
+
+    return apiFetch(`/equipements/${idEquipement}/rapports`, {
+      method: "POST",
+      body: corps,
+    });
+  }
+
+  async function genererAssistant(idEquipement, cible) {
+    const { reponse } = await apiFetch(
+      `/equipements/${idEquipement}/assistant/${cible}`,
+      { method: "POST" },
+    );
+    return reponse;
+  }
+
   const value = {
     equipements,
     filiales,
@@ -132,7 +189,13 @@ export function EquipementsProvider({ children }) {
     getByRef,
     creerEquipement,
     modifierEquipement,
+    modifierDetailsEquipement,
+    creerTypeEquipement,
+    recupererRapports,
+    ajouterRapport,
+    genererAssistant,
     rafraichirEquipements,
+    rafraichirTypes,
   };
 
   return (

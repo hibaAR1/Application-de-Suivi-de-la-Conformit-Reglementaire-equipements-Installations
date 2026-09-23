@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
 import { FILIALES_THEME } from "../data/couleursFiliale";
+import { apiFetch } from "../utils/api";
 
 const FilialeThemeContext = createContext(null);
 
@@ -27,6 +28,7 @@ function texteLisible(hexFond) {
 export function FilialeThemeProvider({ children }) {
   const { user } = useAuth();
   const [filialeActive, setFilialeActive] = useState(null);
+  const [filiales, setFiliales] = useState([]);
 
   useEffect(() => {
     if (!user) {
@@ -38,12 +40,33 @@ export function FilialeThemeProvider({ children }) {
     );
   }, [user]);
 
+  // Charge la liste complète des filiales (codes + libellés) une seule fois ici,
+  // pour que n'importe quel composant (Sidebar, Dashboard...) puisse afficher
+  // le sélecteur de filiale sans refaire l'appel API de son côté.
+  useEffect(() => {
+    if (!user) return;
+    apiFetch("/filiales")
+      .then(setFiliales)
+      .catch(() => {});
+  }, [user]);
+
+  // Filiales que l'utilisateur a le droit de consulter (+ "GROUPE" si vue consolidée)
+  const onglets = user?.voitToutesFiliales
+    ? [...filiales.map((f) => f.code), "GROUPE"]
+    : user?.filialesCodes?.length
+      ? user.filialesCodes
+      : user?.filialeCode
+        ? [user.filialeCode]
+        : [];
+
   const theme = FILIALES_THEME[filialeActive] ?? FILIALES_THEME.GROUPE;
   const contraste = texteLisible(theme.couleur);
 
   const value = {
     filialeActive,
     setFilialeActive,
+    filiales,
+    onglets,
     couleur: theme.couleur,
     nom: theme.nom,
     initiales: theme.initiales,
