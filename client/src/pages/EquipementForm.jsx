@@ -175,8 +175,14 @@ export default function EquipementForm() {
                     setChamp("id_type_equipement", e.target.value)
                   }
                 >
+                  <option value="">—</option>
                   {typesEquipement.map((t) => (
-                    <option value="">—</option>
+                    <option
+                      key={t.id_type_equipement}
+                      value={t.id_type_equipement}
+                    >
+                      {t.libelle}
+                    </option>
                   ))}
                 </select>
                 <button
