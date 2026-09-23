@@ -69,7 +69,11 @@ export function EquipementsProvider({ children }) {
   function sitesDeFiliale(codeFiliale) {
     const filiale = filiales.find((f) => f.code === codeFiliale);
     if (!filiale) return [];
-    return sites.filter((s) => s.id_filiale === filiale.id_filiale);
+    // String(...) des deux côtés : SQL Server renvoie parfois les id en texte,
+    // parfois en nombre, selon la colonne — comparaison stricte (===) échouait.
+    return sites.filter(
+      (s) => String(s.id_filiale) === String(filiale.id_filiale),
+    );
   }
 
   async function creerEquipement(donnees) {

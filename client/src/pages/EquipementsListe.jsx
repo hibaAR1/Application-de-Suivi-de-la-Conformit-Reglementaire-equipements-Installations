@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Plate from "../components/Plate";
 import Badge from "../components/Badge";
 import EquipementModal from "../components/EquipementModal";
+import FicheTechniqueModal from "../components/FicheTechniqueModal";
 import NouveauTypeModal from "../components/NouveauTypeModal";
 import NouveauGroupeModal from "../components/NouveauGroupeModal";
 import { useEquipements } from "../context/EquipementsContext";
@@ -89,6 +90,7 @@ export default function EquipementsListe({ categorie }) {
   const [typeFiltre, setTypeFiltre] = useState("");
   const [statutFiltre, setStatutFiltre] = useState("");
   const [fichierOuvert, setFichierOuvert] = useState(null);
+  const [ficheOuverte, setFicheOuverte] = useState(null);
   const [nouveauTypeOuvert, setNouveauTypeOuvert] = useState(false);
   const [nouveauGroupeOuvert, setNouveauGroupeOuvert] = useState(false);
   const [versionGroupes, setVersionGroupes] = useState(0);
@@ -382,7 +384,7 @@ export default function EquipementsListe({ categorie }) {
                                 title="Étiquette QR"
                                 style={{ padding: "4px 8px" }}
                                 onClick={() =>
-                                  setFichierOuvert(eq.id_equipement)
+                                  setFicheOuverte(eq.id_equipement)
                                 }
                               >
                                 <IconQr />
@@ -423,6 +425,13 @@ export default function EquipementsListe({ categorie }) {
         <NouveauTypeModal
           onClose={() => setNouveauTypeOuvert(false)}
           onCree={(type) => setTypeFiltre(String(type.id_type_equipement))}
+        />
+      )}
+
+      {ficheOuverte && (
+        <FicheTechniqueModal
+          id={ficheOuverte}
+          onClose={() => setFicheOuverte(null)}
         />
       )}
 
