@@ -7,6 +7,7 @@ import FicheTechniqueModal from "../components/FicheTechniqueModal";
 import NouveauTypeModal from "../components/NouveauTypeModal";
 import NouveauGroupeModal from "../components/NouveauGroupeModal";
 import { useEquipements } from "../context/EquipementsContext";
+import { useControles } from "../context/ControlesContext";
 import { useFilialeTheme } from "../context/FilialeThemeContext";
 import { getGroupesPersonnalises } from "../utils/groupes";
 import {
@@ -24,7 +25,19 @@ const COLONNES_CSV = [
   "Numero_Serie",
   "Date_Mise_En_Service",
   "Statut",
+  "Fabricant",
+  "Modele",
+  "Annee_Fabrication",
+  "Organisme_Controle",
+  "Date_Dernier_Controle",
 ];
+
+// Même correspondance que dans EquipementForm.jsx : un dernier contrôle
+// n'est créé automatiquement que pour ces deux statuts.
+const RESULTAT_PAR_STATUT = {
+  Conforme: "Favorable",
+  "Non conforme": "Défavorable",
+};
 
 const STATUT_TONE = {
   Conforme: "success",
@@ -108,6 +121,7 @@ export default function EquipementsListe({ categorie }) {
     sitesDeFiliale,
     creerEquipement,
   } = useEquipements();
+  const { ajouterControle } = useControles();
   const { filiales, onglets, filialeActive } = useFilialeTheme();
   const [recherche, setRecherche] = useState("");
   const [filialeFiltre, setFilialeFiltre] = useState("");
@@ -162,6 +176,11 @@ export default function EquipementsListe({ categorie }) {
         numeroSerie,
         dateMiseEnService,
         statut,
+        fabricant,
+        modele,
+        anneeFabrication,
+        organismeControle,
+        dateDernierControle,
       ] = valeurs.map((v) => v?.trim() ?? "");
 
       const filiale = filialesToutes.find(
@@ -192,8 +211,9 @@ export default function EquipementsListe({ categorie }) {
           )
         : null;
 
+      const statutFinal = statut || "Conforme";
       try {
-        await creerEquipement({
+        const cree = await creerEquipement({
           codeFiliale,
           id_site: site?.id_site ?? "",
           id_type_equipement: type.id_type_equipement,
@@ -201,8 +221,31 @@ export default function EquipementsListe({ categorie }) {
           marque_modele: marqueModele,
           numero_serie: numeroSerie,
           date_mise_en_service: dateMiseEnService,
-          statut: statut || "Conforme",
+          statut: statutFinal,
+          fabricant,
+          modele,
+          annee_fabrication: anneeFabrication ? Number(anneeFabrication) : null,
+          organisme_controle: organismeControle,
         });
+
+        if (
+          dateDernierControle &&
+          organismeControle &&
+          RESULTAT_PAR_STATUT[statutFinal]
+        ) {
+          try {
+            await ajouterControle({
+              equipementRef: cree.id_equipement,
+              dateControle: dateDernierControle,
+              organisme: organismeControle,
+              resultat: RESULTAT_PAR_STATUT[statutFinal],
+            });
+          } catch (e) {
+            erreurs.push(
+              `Ligne ${numeroLigne} : équipement créé, mais le dernier contrôle n'a pas pu être enregistré (${e.message}).`,
+            );
+          }
+        }
         succes++;
       } catch (e) {
         erreurs.push(`Ligne ${numeroLigne} : ${e.message}`);

@@ -90,6 +90,10 @@ export function EquipementsProvider({ children }) {
       numero_serie: donnees.numero_serie,
       date_mise_en_service: donnees.date_mise_en_service,
       statut: donnees.statut,
+      fabricant: donnees.fabricant || null,
+      modele: donnees.modele || null,
+      annee_fabrication: donnees.annee_fabrication || null,
+      organisme_controle: donnees.organisme_controle || null,
     };
     const cree = await apiFetch("/equipements", {
       method: "POST",
@@ -112,6 +116,10 @@ export function EquipementsProvider({ children }) {
       numero_serie: donnees.numero_serie,
       date_mise_en_service: donnees.date_mise_en_service,
       statut: donnees.statut,
+      fabricant: donnees.fabricant || null,
+      modele: donnees.modele || null,
+      annee_fabrication: donnees.annee_fabrication || null,
+      organisme_controle: donnees.organisme_controle || null,
     };
     const maj = await apiFetch(`/equipements/${id}`, {
       method: "PUT",
