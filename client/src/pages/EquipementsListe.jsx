@@ -24,6 +24,7 @@ const COLONNES_CSV = [
   "Marque_Modele",
   "Numero_Serie",
   "Date_Mise_En_Service",
+  "Periodicite_Mois",
   "Statut",
   "Fabricant",
   "Modele",
@@ -120,6 +121,7 @@ export default function EquipementsListe({ categorie }) {
     sites: sitesTous,
     sitesDeFiliale,
     creerEquipement,
+    rafraichirEquipements,
   } = useEquipements();
   const { ajouterControle } = useControles();
   const { filiales, onglets, filialeActive } = useFilialeTheme();
@@ -144,10 +146,12 @@ export default function EquipementsListe({ categorie }) {
   function telechargerCanevas() {
     telechargerCanevasXlsx({
       colonnes: COLONNES_CSV,
-      filiales: filialesToutes.map((f) => f.code),
-      sites: [...new Set(sitesTous.map((s) => s.libelle))],
-      types: typesEquipement.map((t) => t.libelle),
-      statuts: Object.keys(STATUT_TONE),
+      listes: {
+        Filiale: filialesToutes.map((f) => f.code),
+        Site: [...new Set(sitesTous.map((s) => s.libelle))],
+        Type: typesEquipement.map((t) => t.libelle),
+        Statut: Object.keys(STATUT_TONE),
+      },
     });
   }
 
@@ -175,6 +179,7 @@ export default function EquipementsListe({ categorie }) {
         marqueModele,
         numeroSerie,
         dateMiseEnService,
+        periodiciteMois,
         statut,
         fabricant,
         modele,
@@ -205,6 +210,10 @@ export default function EquipementsListe({ categorie }) {
         );
         continue;
       }
+      if (!periodiciteMois || Number(periodiciteMois) < 1) {
+        erreurs.push(`Ligne ${numeroLigne} : périodicité (mois) obligatoire.`);
+        continue;
+      }
       const site = siteLibelle
         ? sitesDeFiliale(codeFiliale).find(
             (s) => s.libelle?.toLowerCase() === siteLibelle.toLowerCase(),
@@ -221,6 +230,7 @@ export default function EquipementsListe({ categorie }) {
           marque_modele: marqueModele,
           numero_serie: numeroSerie,
           date_mise_en_service: dateMiseEnService,
+          periodicite_mois: Number(periodiciteMois),
           statut: statutFinal,
           fabricant,
           modele,
@@ -252,6 +262,10 @@ export default function EquipementsListe({ categorie }) {
       }
     }
 
+    // Recharge la liste (avec les contrôles) une seule fois à la fin, sinon
+    // "Dernier Ctr./Prochain" restent vides tant que la page n'est pas
+    // rafraîchie manuellement (eq.controles est une relation à part).
+    await rafraichirEquipements();
     setImportEnCours(false);
     setResultatImport({ succes, total: lignes.length, erreurs });
   }

@@ -1,16 +1,23 @@
 import ExcelJS from "exceljs";
 
+// A, B, C... jusqu'à la colonne d'index donné (0 = A). Largement suffisant
+// ici (moins de 26 colonnes).
+function lettreColonne(index) {
+  return String.fromCharCode(65 + index);
+}
+
 // Construit et télécharge un classeur .xlsx vierge (juste les libellés de
 // colonnes, aucune donnée) avec de vraies listes déroulantes Excel (validation
-// de données) pour Filiale / Site / Type / Statut, remplies avec les valeurs
-// réelles de l'application. Évite les fautes de frappe qui empêchent
-// l'import de retrouver la bonne filiale/le bon type ensuite.
+// de données) sur certaines colonnes, remplies avec les valeurs réelles de
+// l'application. Évite les fautes de frappe qui empêchent l'import de
+// retrouver la bonne filiale/le bon type ensuite.
+//
+// `listes` : { "Nom de colonne (tel qu'il apparaît dans `colonnes`)": [valeurs...] }
+// — la colonne est retrouvée par son nom, pas par une lettre fixe, pour
+// pouvoir réordonner/ajouter des colonnes sans casser les validations.
 export async function telechargerCanevasXlsx({
   colonnes,
-  filiales,
-  sites,
-  types,
-  statuts,
+  listes: listesParColonne,
   nomFichier = "canevas-equipements.xlsx",
 }) {
   const classeur = new ExcelJS.Workbook();
@@ -23,42 +30,30 @@ export async function telechargerCanevasXlsx({
   feuille.columns = colonnes.map(() => ({ width: 24 }));
 
   // Feuille cachée : une colonne par liste de choix (référencée par les
-  // validations de données ci-dessous).
-  const ecrireListe = (colonne, valeurs) => {
-    valeurs.forEach((v, i) => {
-      listes.getCell(i + 1, colonne).value = v;
+  // validations de données ci-dessous), dans l'ordre de `listesParColonne`.
+  const entrees = Object.entries(listesParColonne);
+  entrees.forEach(([, valeurs], i) => {
+    valeurs.forEach((v, ligne) => {
+      listes.getCell(ligne + 1, i + 1).value = v;
     });
-  };
-  ecrireListe(1, filiales);
-  ecrireListe(2, sites);
-  ecrireListe(3, types);
-  ecrireListe(4, statuts);
+  });
 
   const plage = (lettre, longueur) =>
     `Listes!$${lettre}$1:$${lettre}$${Math.max(longueur, 1)}`;
 
   const NB_LIGNES = 300; // lignes vierges avec liste déroulante, à remplir
   for (let ligne = 2; ligne <= NB_LIGNES; ligne++) {
-    feuille.getCell(`A${ligne}`).dataValidation = {
-      type: "list",
-      allowBlank: true,
-      formulae: [plage("A", filiales.length)],
-    };
-    feuille.getCell(`B${ligne}`).dataValidation = {
-      type: "list",
-      allowBlank: true,
-      formulae: [plage("B", sites.length)],
-    };
-    feuille.getCell(`C${ligne}`).dataValidation = {
-      type: "list",
-      allowBlank: true,
-      formulae: [plage("C", types.length)],
-    };
-    feuille.getCell(`H${ligne}`).dataValidation = {
-      type: "list",
-      allowBlank: true,
-      formulae: [plage("D", statuts.length)],
-    };
+    entrees.forEach(([nomColonne, valeurs], i) => {
+      const indexColonneCible = colonnes.indexOf(nomColonne);
+      if (indexColonneCible === -1) return;
+      feuille.getCell(
+        `${lettreColonne(indexColonneCible)}${ligne}`,
+      ).dataValidation = {
+        type: "list",
+        allowBlank: true,
+        formulae: [plage(lettreColonne(i), valeurs.length)],
+      };
+    });
   }
 
   const buffer = await classeur.xlsx.writeBuffer();

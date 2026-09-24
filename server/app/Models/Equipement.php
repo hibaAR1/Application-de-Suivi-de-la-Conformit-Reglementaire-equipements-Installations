@@ -15,7 +15,7 @@ class Equipement extends Model
     protected $fillable = [
         'id_equipement', 'referentiel', 'id_filiale', 'id_site', 'id_type_equipement',
         'designation', 'marque_modele', 'numero_serie',
-        'date_mise_en_service', 'statut', 'qr_code',
+        'date_mise_en_service', 'periodicite_mois', 'statut', 'qr_code',
         'immatriculation', 'fabricant', 'modele', 'annee_fabrication',
         'organisme_controle', 'caracteristiques',
     ];
