@@ -7,6 +7,7 @@ import {
   STATUTS_EQUIPEMENT,
 } from "../context/EquipementsContext";
 import { useControles } from "../context/ControlesContext";
+import { useFilialeTheme } from "../context/FilialeThemeContext";
 
 // Un dernier contrôle ne peut être créé automatiquement ici que pour ces deux
 // statuts (correspondance directe avec le résultat du contrôle) — "Conforme
@@ -38,6 +39,7 @@ export default function EquipementForm() {
     rafraichirEquipements,
   } = useEquipements();
   const { ajouterControle } = useControles();
+  const { filialeActive } = useFilialeTheme();
   const existant = ref ? getByRef(ref) : null;
   const dernierControleExistant = existant?.controles?.length
     ? [...existant.controles].sort(
@@ -64,7 +66,10 @@ export default function EquipementForm() {
           date_dernier_controle: "",
         }
       : {
-          codeFiliale: filiales[0]?.code ?? "",
+          codeFiliale:
+            filialeActive && filialeActive !== "GROUPE"
+              ? filialeActive
+              : (filiales[0]?.code ?? ""),
           id_site: "",
           id_type_equipement: "",
           designation: "",
