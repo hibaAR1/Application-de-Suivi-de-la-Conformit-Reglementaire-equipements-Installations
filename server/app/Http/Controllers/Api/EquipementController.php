@@ -5,7 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Equipement;
 use App\Models\Filiale;
+use App\Models\Site;
+use App\Models\TypeEquipement;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class EquipementController extends Controller
@@ -57,13 +61,23 @@ class EquipementController extends Controller
         $data['statut'] = $data['statut'] ?? 'Conforme';
 
         $filiale = Filiale::findOrFail($data['id_filiale']);
-        $compteDepart = Equipement::where('id_equipement', 'like', "{$filiale->code}-%")->count();
+        $typeEquipement = TypeEquipement::findOrFail($data['id_type_equipement']);
+        $site = $data['id_site'] ? Site::find($data['id_site']) : null;
+
+        // Nouveau format d'identifiant, pour la saisie manuelle du scan
+        // (voir ScannerEquipementModal.jsx) : [FILIALE]-[SITE]-[TYPE]-[SEQ],
+        // ex. "CTM-105-CHAR-01". "SS" (sans site) si aucun site choisi —
+        // le champ site reste optionnel sur l'équipement.
+        $codeSite = $site->code ?? 'SS';
+        $codeType = $this->codeType($typeEquipement->libelle);
+        $prefixe = "{$filiale->code}-{$codeSite}-{$codeType}-";
+        $compteDepart = Equipement::where('id_equipement', 'like', "{$prefixe}%")->count();
 
         // Essaie plusieurs identifiants consécutifs au cas où un autre
         // équipement aurait été créé entre-temps (concurrence) : on ne
         // s'arrête que sur un id réellement libre.
         for ($tentative = 1; $tentative <= 20; $tentative++) {
-            $idCandidat = sprintf('%s-%04d', $filiale->code, $compteDepart + $tentative);
+            $idCandidat = $prefixe . sprintf('%02d', $compteDepart + $tentative);
             if (Equipement::where('id_equipement', $idCandidat)->exists()) {
                 continue;
             }
@@ -79,6 +93,16 @@ class EquipementController extends Controller
         }
 
         abort(500, "Impossible de générer un identifiant d'équipement unique, réessayez.");
+    }
+
+    // "CHAR" pour "Chariot élévateur", "GRUE" pour "Grue"... 4 lettres,
+    // sans accents ni espaces, pour le segment [TYPE] de l'identifiant.
+    private function codeType(string $libelle): string
+    {
+        $sansAccents = Str::ascii($libelle);
+        $lettres = strtoupper(preg_replace('/[^A-Za-z]/', '', $sansAccents));
+
+        return substr(str_pad($lettres, 4, 'X'), 0, 4);
     }
 
     public function update(Request $request, $id)
@@ -106,5 +130,28 @@ class EquipementController extends Controller
         $equipement->update($data);
 
         return $equipement->load(['filiale', 'site', 'typeEquipement']);
+    }
+
+    // Bouton "Supprimer" réservé au super admin dans la liste des
+    // équipements (voir EquipementsListe.jsx). apiResource() enregistre
+    // bien la route DELETE, mais il fallait encore écrire la méthode.
+    public function destroy($id)
+    {
+        $equipement = Equipement::findOrFail($id);
+
+        DB::transaction(function () use ($equipement) {
+            // fk_controle_equipement n'a pas de "on delete cascade" (choix
+            // volontaire à la création de cette contrainte, pour ne jamais
+            // perdre un historique de contrôle par accident) : on supprime
+            // donc les contrôles explicitement avant l'équipement. Leurs
+            // réserves cascadent automatiquement depuis "controle"
+            // (fk_reserve_controle). Les rapports cascadent et les questions
+            // de l'assistant passent à NULL automatiquement depuis
+            // "equipement" (fk_rapport_equipement / fk_question_equipement).
+            $equipement->controles()->delete();
+            $equipement->delete();
+        });
+
+        return response()->json(['message' => 'Équipement supprimé.']);
     }
 }

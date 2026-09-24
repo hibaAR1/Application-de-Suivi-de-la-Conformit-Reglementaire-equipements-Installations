@@ -124,6 +124,7 @@ export default function EquipementsListe({ categorie }) {
     creerEquipement,
     rafraichirEquipements,
     supprimerEquipement,
+    groupesEquipement,
   } = useEquipements();
   const { ajouterControle } = useControles();
   const { filiales, onglets, filialeActive } = useFilialeTheme();
@@ -172,6 +173,10 @@ export default function EquipementsListe({ categorie }) {
         Type: typesEquipement.map((t) => t.libelle),
         Statut: Object.keys(STATUT_TONE),
       },
+      // Vraies dates Excel (calendrier + refus de saisie invalide) plutôt
+      // que du texte libre, pour ne jamais avoir de format incohérent à
+      // l'import (voir excelEquipements.js).
+      colonnesDate: ["Date_Mise_En_Service", "Date_Dernier_Controle"],
     });
   }
 
@@ -343,7 +348,11 @@ export default function EquipementsListe({ categorie }) {
   ]);
 
   // Compteurs du sous-titre : sur l'ensemble filtré par filiale/recherche/type/statut,
-  // sans tenir compte du filtre Fixe/Mobile lui-même (pour afficher les deux totaux).
+  // sans tenir compte du filtre Fixe/Mobile lui-même (pour afficher tous les totaux).
+  // Un par groupe RÉELLEMENT présent dans les équipements (pas seulement
+  // Fixe/Mobile en dur) : un équipement d'un groupe personnalisé (ex.
+  // "Mixte", créé depuis Données de base > Groupes) apparaît maintenant
+  // aussi dans ce résumé au lieu de disparaître dans le total sans détail.
   const compteurs = useMemo(() => {
     const base = equipements.filter((e) => {
       if (
@@ -355,13 +364,26 @@ export default function EquipementsListe({ categorie }) {
       if (filialeFiltre && e.filiale?.code !== filialeFiltre) return false;
       return true;
     });
+    const parGroupe = {};
+    base.forEach((e) => {
+      const g = e.type_equipement?.categorie ?? "Non classé";
+      parGroupe[g] = (parGroupe[g] ?? 0) + 1;
+    });
+    // Ordre : les groupes connus (Fixe, Mobile, Mixte...) dans l'ordre de la
+    // liste Données de base, puis tout groupe non listé là (ex. équipement
+    // sans type), pour ne jamais faire disparaître un compte.
+    const ordre = [
+      ...groupesEquipement.map((g) => g.libelle),
+      ...Object.keys(parGroupe).filter(
+        (g) => !groupesEquipement.some((ge) => ge.libelle === g),
+      ),
+    ];
     return {
       total: base.length,
-      fixes: base.filter((e) => e.type_equipement?.categorie === "Fixe").length,
-      mobiles: base.filter((e) => e.type_equipement?.categorie === "Mobile")
-        .length,
+      parGroupe,
+      ordre: ordre.filter((g) => parGroupe[g]),
     };
-  }, [equipements, filialeActive, filialeFiltre]);
+  }, [equipements, filialeActive, filialeFiltre, groupesEquipement]);
 
   return (
     <>
@@ -377,8 +399,11 @@ export default function EquipementsListe({ categorie }) {
           <div
             style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}
           >
-            {compteurs.total} équipement(s) — {compteurs.mobiles} mobile(s) /{" "}
-            {compteurs.fixes} fixe(s)
+            {compteurs.total} équipement(s)
+            {compteurs.ordre.length > 0 && " — "}
+            {compteurs.ordre
+              .map((g) => `${compteurs.parGroupe[g]} ${g.toLowerCase()}(s)`)
+              .join(" / ")}
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>

@@ -15,9 +15,18 @@ function lettreColonne(index) {
 // `listes` : { "Nom de colonne (tel qu'il apparaît dans `colonnes`)": [valeurs...] }
 // — la colonne est retrouvée par son nom, pas par une lettre fixe, pour
 // pouvoir réordonner/ajouter des colonnes sans casser les validations.
+//
+// `colonnesDate` : noms de colonnes (dans `colonnes`) qui doivent contenir
+// une vraie date Excel plutôt que du texte libre. Comme pour les listes
+// déroulantes, Excel bloque la saisie si ce n'est pas une date valide —
+// on ne laisse pas taper "12 septembre" ou "12/9/26" à la main, ce qui
+// évite les formats incohérents que l'import aurait ensuite du mal à
+// relire de façon fiable (lireXlsxEquipements() ne sait bien convertir
+// qu'une vraie valeur Date, pas n'importe quel texte).
 export async function telechargerCanevasXlsx({
   colonnes,
   listes: listesParColonne,
+  colonnesDate = [],
   nomFichier = "canevas-equipements.xlsx",
 }) {
   const classeur = new ExcelJS.Workbook();
@@ -41,6 +50,18 @@ export async function telechargerCanevasXlsx({
   const plage = (lettre, longueur) =>
     `Listes!$${lettre}$1:$${lettre}$${Math.max(longueur, 1)}`;
 
+  // Format d'affichage jour/mois/année sur toute la colonne, pour que la
+  // cellule se comporte comme une date dès qu'on clique dessus (et pas
+  // comme du texte) — Excel montre alors un petit calendrier au survol.
+  colonnesDate.forEach((nomColonne) => {
+    const index = colonnes.indexOf(nomColonne);
+    if (index === -1) return;
+    feuille.getColumn(index + 1).numFmt = "dd/mm/yyyy";
+  });
+
+  const DATE_MIN = new Date(1970, 0, 1);
+  const DATE_MAX = new Date(2100, 11, 31);
+
   const NB_LIGNES = 300; // lignes vierges avec liste déroulante, à remplir
   for (let ligne = 2; ligne <= NB_LIGNES; ligne++) {
     entrees.forEach(([nomColonne, valeurs], i) => {
@@ -52,6 +73,24 @@ export async function telechargerCanevasXlsx({
         type: "list",
         allowBlank: true,
         formulae: [plage(lettreColonne(i), valeurs.length)],
+      };
+    });
+
+    colonnesDate.forEach((nomColonne) => {
+      const indexColonneCible = colonnes.indexOf(nomColonne);
+      if (indexColonneCible === -1) return;
+      feuille.getCell(
+        `${lettreColonne(indexColonneCible)}${ligne}`,
+      ).dataValidation = {
+        type: "date",
+        operator: "between",
+        allowBlank: true,
+        showErrorMessage: true,
+        errorStyle: "stop",
+        errorTitle: "Date invalide",
+        error:
+          "Cette cellule doit contenir une vraie date (utilisez le calendrier ou le format JJ/MM/AAAA), pas du texte libre.",
+        formulae: [DATE_MIN, DATE_MAX],
       };
     });
   }

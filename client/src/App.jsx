@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AppLayout from "./components/AppLayout";
 import Login from "./pages/Login";
@@ -12,7 +12,6 @@ import MobileControl from "./pages/MobileControl";
 import ScanSimule from "./pages/ScanSimule";
 import Utilisateurs from "./pages/Utilisateurs"; // AJOUTE
 import UtilisateurForm from "./pages/UtilisateurForm"; // AJOUTE
-import DonneesBase from "./pages/DonneesBase";
 import GroupesEquipementAdmin from "./pages/GroupesEquipementAdmin";
 import TypesEquipementAdmin from "./pages/TypesEquipementAdmin";
 
@@ -26,9 +25,11 @@ function App() {
           <Route element={<AppLayout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/equipements" element={<EquipementsListe />} />
+            {/* Ancienne page "Équipements fixes" (filtre "Fixe" forcé) :
+                redirige vers la liste complète, sans présélection. */}
             <Route
               path="/equipements/fixes"
-              element={<EquipementsListe categorie="Fixe" />}
+              element={<Navigate to="/equipements" replace />}
             />
             <Route path="/equipements/nouveau" element={<EquipementForm />} />
             <Route
@@ -54,7 +55,10 @@ function App() {
               element={<UtilisateurForm />}
             />{" "}
             {/* AJOUTE */}
-            <Route path="/donnees-base" element={<DonneesBase />} />
+            <Route
+              path="/donnees-base"
+              element={<Navigate to="/donnees-base/groupes" replace />}
+            />
             <Route
               path="/donnees-base/groupes"
               element={<GroupesEquipementAdmin />}

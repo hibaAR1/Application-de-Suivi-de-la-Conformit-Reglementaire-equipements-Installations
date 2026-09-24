@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import Plate from "../components/Plate";
 import { useAuth } from "../context/AuthContext";
 import { useEquipements } from "../context/EquipementsContext";
@@ -132,7 +131,6 @@ function GroupeModal({ groupeExistant, onClose, onEnregistre }) {
 
 export default function GroupesEquipementAdmin() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const { groupesEquipement, typesEquipement, supprimerGroupeEquipement } =
     useEquipements();
   const [modalOuverte, setModalOuverte] = useState(false);
@@ -163,15 +161,7 @@ export default function GroupesEquipementAdmin() {
     <>
       <div className="topbar">
         <div>
-          <div className="eyebrow">
-            <span
-              style={{ cursor: "pointer" }}
-              onClick={() => navigate("/donnees-base")}
-            >
-              Données de base
-            </span>{" "}
-            / Groupes
-          </div>
+          <div className="eyebrow">Données de base / Groupes</div>
           <h1 style={{ fontSize: "22px" }}>Groupes</h1>
         </div>
         <button
