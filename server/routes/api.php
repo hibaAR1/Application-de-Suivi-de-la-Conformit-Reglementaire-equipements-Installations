@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BootstrapController;
 use App\Http\Controllers\Api\EquipementController;
 use App\Http\Controllers\Api\FilialeController;
 use App\Http\Controllers\Api\RoleController;
@@ -19,6 +20,12 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+
+    // Un seul aller-retour pour toutes les données de démarrage (voir
+    // BootstrapController) au lieu de 4 requêtes séparées lancées en même
+    // temps par le client — ça évitait qu'elles s'empilent sur le serveur
+    // de dev et faisait tomber le chargement initial de 5-7s à ~1s.
+    Route::get('/donnees-initiales', [BootstrapController::class, 'index']);
 
     Route::apiResource('equipements', EquipementController::class);
     Route::apiResource('filiales', FilialeController::class);
