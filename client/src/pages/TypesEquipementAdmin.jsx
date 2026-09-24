@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import Plate from "../components/Plate";
 import NouveauTypeModal from "../components/NouveauTypeModal";
 import { useAuth } from "../context/AuthContext";
@@ -7,7 +6,6 @@ import { useEquipements } from "../context/EquipementsContext";
 
 export default function TypesEquipementAdmin() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const { typesEquipement, equipements, supprimerTypeEquipement } =
     useEquipements();
   const [modalOuverte, setModalOuverte] = useState(false);
@@ -39,15 +37,7 @@ export default function TypesEquipementAdmin() {
     <>
       <div className="topbar">
         <div>
-          <div className="eyebrow">
-            <span
-              style={{ cursor: "pointer" }}
-              onClick={() => navigate("/donnees-base")}
-            >
-              Données de base
-            </span>{" "}
-            / Types d'équipement
-          </div>
+          <div className="eyebrow">Données de base / Types d'équipement</div>
           <h1 style={{ fontSize: "22px" }}>Types d'équipement</h1>
         </div>
         <button
