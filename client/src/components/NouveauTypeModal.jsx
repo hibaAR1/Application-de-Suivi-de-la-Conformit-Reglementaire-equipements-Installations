@@ -1,9 +1,5 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useEquipements } from "../context/EquipementsContext";
-import {
-  ajouterGroupePersonnalise,
-  getGroupesPersonnalises,
-} from "../utils/groupes";
 
 const overlayStyle = {
   position: "fixed",
@@ -28,44 +24,19 @@ const cardStyle = {
   padding: 24,
 };
 
-// Popup "+ Nouveau type d'équipement" : nom, Groupe (Fixe/Mobile), périodicité,
-// et une liste de "Caractéristiques" (autant que l'utilisatrice en ajoute) qui
-// deviendront les champs de l'onglet "Caractéristiques" de la fiche équipement.
+// Popup "+ Nouveau type d'équipement" : nom, périodicité, et une liste de
+// "Caractéristiques" (autant que l'utilisatrice en ajoute) qui deviendront
+// les champs de l'onglet "Caractéristiques" de la fiche équipement.
+// Le champ "Groupe" (Fixe/Mobile) a été retiré de cette popup : le type est
+// créé avec le groupe "Fixe" par défaut, modifiable ensuite si besoin.
 export default function NouveauTypeModal({ onClose, onCree }) {
-  const { creerTypeEquipement, typesEquipement } = useEquipements();
+  const { creerTypeEquipement } = useEquipements();
   const [libelle, setLibelle] = useState("");
-  const [categorie, setCategorie] = useState("Fixe");
-  const [periodicite, setPeriodicite] = useState(12);
+  const [categorie] = useState("Fixe");
+  const [periodicite, setPeriodicite] = useState("");
   const [caracteristiques, setCaracteristiques] = useState([""]);
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState("");
-
-  // Groupes disponibles dans le menu déroulant : Fixe/Mobile de base, plus tout
-  // groupe déjà utilisé par un type existant, plus les groupes créés à vide
-  // (popup "+ Nouveau groupe" sur la page liste, gardés dans le navigateur).
-  const [nouveauGroupeOuvert, setNouveauGroupeOuvert] = useState(false);
-  const [nouveauGroupe, setNouveauGroupe] = useState("");
-  // Incrémenté à chaque ajout, pour forcer groupesDisponibles à relire le
-  // stockage local (celui-ci n'est pas un état React, donc pas suivi tout seul).
-  const [versionGroupes, setVersionGroupes] = useState(0);
-
-  const groupesDisponibles = useMemo(() => {
-    const set = new Set(["Fixe", "Mobile"]);
-    typesEquipement.forEach((t) => t.categorie && set.add(t.categorie));
-    getGroupesPersonnalises().forEach((g) => set.add(g));
-    return Array.from(set);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typesEquipement, versionGroupes]);
-
-  function ajouterGroupe() {
-    const nom = nouveauGroupe.trim();
-    if (!nom) return;
-    ajouterGroupePersonnalise(nom);
-    setVersionGroupes((v) => v + 1);
-    setCategorie(nom);
-    setNouveauGroupe("");
-    setNouveauGroupeOuvert(false);
-  }
 
   function modifierCaracteristique(index, valeur) {
     setCaracteristiques((prev) =>
@@ -87,13 +58,17 @@ export default function NouveauTypeModal({ onClose, onCree }) {
       setErreur("Le nom du type est obligatoire.");
       return;
     }
+    if (!periodicite || Number(periodicite) < 1) {
+      setErreur("La périodicité (mois) est obligatoire.");
+      return;
+    }
     setEnvoi(true);
     setErreur("");
     try {
       const type = await creerTypeEquipement({
         libelle: libelle.trim(),
         categorie,
-        periodiciteControle: Number(periodicite) || 12,
+        periodiciteControle: Number(periodicite),
         caracteristiques: caracteristiques.filter((c) => c.trim() !== ""),
       });
       onCree?.(type);
@@ -139,62 +114,18 @@ export default function NouveauTypeModal({ onClose, onCree }) {
             />
           </div>
 
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
-          >
-            <div className="field">
-              <label>Groupe</label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <select
-                  value={categorie}
-                  onChange={(e) => setCategorie(e.target.value)}
-                  style={{ flex: 1 }}
-                >
-                  {groupesDisponibles.map((g) => (
-                    <option key={g} value={g}>
-                      {g}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  style={{ padding: "6px 10px" }}
-                  title="Créer un nouveau groupe"
-                  onClick={() => setNouveauGroupeOuvert((v) => !v)}
-                >
-                  +
-                </button>
-              </div>
-              {nouveauGroupeOuvert && (
-                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                  <input
-                    type="text"
-                    placeholder="ex: Mixte"
-                    value={nouveauGroupe}
-                    onChange={(e) => setNouveauGroupe(e.target.value)}
-                    style={{ flex: 1 }}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    style={{ padding: "6px 10px" }}
-                    onClick={ajouterGroupe}
-                  >
-                    Ajouter
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="field">
-              <label>Périodicité (mois)</label>
-              <input
-                type="number"
-                min={1}
-                value={periodicite}
-                onChange={(e) => setPeriodicite(e.target.value)}
-              />
-            </div>
+          <div className="field">
+            <label>
+              Périodicité (mois){" "}
+              <span style={{ color: "var(--danger)" }}>*</span>
+            </label>
+            <input
+              type="number"
+              min={1}
+              placeholder="ex: 12"
+              value={periodicite}
+              onChange={(e) => setPeriodicite(e.target.value)}
+            />
           </div>
 
           <div style={{ marginTop: 4, marginBottom: 16 }}>

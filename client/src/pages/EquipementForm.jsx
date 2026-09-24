@@ -35,6 +35,7 @@ export default function EquipementForm() {
     filiales,
     sitesDeFiliale,
     typesEquipement,
+    rafraichirEquipements,
   } = useEquipements();
   const { ajouterControle } = useControles();
   const existant = ref ? getByRef(ref) : null;
@@ -54,6 +55,7 @@ export default function EquipementForm() {
           marque_modele: existant.marque_modele ?? "",
           numero_serie: existant.numero_serie ?? "",
           date_mise_en_service: existant.date_mise_en_service ?? "",
+          periodicite_mois: existant.periodicite_mois ?? "",
           statut: existant.statut ?? "Conforme",
           fabricant: existant.fabricant ?? "",
           modele: existant.modele ?? "",
@@ -69,6 +71,7 @@ export default function EquipementForm() {
           marque_modele: "",
           numero_serie: "",
           date_mise_en_service: "",
+          periodicite_mois: "",
           statut: "Conforme",
           fabricant: "",
           modele: "",
@@ -91,7 +94,7 @@ export default function EquipementForm() {
   const controleRapidePossible = form.statut in RESULTAT_PAR_STATUT;
   const prochaineEcheancePrevue = calculerProchaineEcheance(
     form.date_dernier_controle,
-    typeActuel?.periodicite_controle,
+    form.periodicite_mois,
   );
 
   function setChamp(champ, valeur) {
@@ -117,6 +120,8 @@ export default function EquipementForm() {
     if (!form.numero_serie.trim()) e.numero_serie = "Champ obligatoire.";
     if (!form.date_mise_en_service)
       e.date_mise_en_service = "Champ obligatoire.";
+    if (!form.periodicite_mois || Number(form.periodicite_mois) < 1)
+      e.periodicite_mois = "Champ obligatoire.";
     if (!form.id_type_equipement)
       e.id_type_equipement = "Choisissez un type d'équipement.";
     setErreurs(e);
@@ -133,6 +138,7 @@ export default function EquipementForm() {
         ...form,
         id_site: form.id_site ? Number(form.id_site) : null,
         id_type_equipement: Number(form.id_type_equipement),
+        periodicite_mois: Number(form.periodicite_mois),
         annee_fabrication: form.annee_fabrication
           ? Number(form.annee_fabrication)
           : null,
@@ -159,6 +165,11 @@ export default function EquipementForm() {
           organisme: form.organisme_controle,
           resultat: RESULTAT_PAR_STATUT[form.statut],
         });
+        // La fiche équipement (liste, fiche technique...) lit eq.controles,
+        // une relation chargée à part dans EquipementsContext : sans ce
+        // rechargement, le contrôle qu'on vient de créer n'apparaît pas
+        // tant que la page n'est pas rafraîchie manuellement.
+        await rafraichirEquipements();
       }
 
       navigate("/equipements");
@@ -345,15 +356,27 @@ export default function EquipementForm() {
                 )}
               </div>
               <div className="field">
-                <label>Périodicité de contrôle (mois)</label>
+                <label htmlFor="periodicite">
+                  Périodicité de contrôle (mois){" "}
+                  <span style={{ color: "var(--danger)" }}>*</span>
+                </label>
                 <input
+                  id="periodicite"
                   type="number"
-                  value={typeActuel?.periodicite_controle ?? ""}
-                  disabled
+                  min={1}
+                  placeholder={
+                    typeActuel?.periodicite_controle
+                      ? `ex: ${typeActuel.periodicite_controle}`
+                      : "ex: 12"
+                  }
+                  value={form.periodicite_mois}
+                  onChange={(e) => setChamp("periodicite_mois", e.target.value)}
                 />
-                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                  Déterminée selon le type d'équipement.
-                </span>
+                {erreurs.periodicite_mois && (
+                  <span style={{ color: "var(--danger)", fontSize: 11.5 }}>
+                    {erreurs.periodicite_mois}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -495,7 +518,7 @@ export default function EquipementForm() {
                     disabled
                   />
                   <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                    Date du contrôle + périodicité du type.
+                    Date du contrôle + périodicité saisie ci-dessus.
                   </span>
                 </div>
               </div>

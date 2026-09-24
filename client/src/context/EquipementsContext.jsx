@@ -12,14 +12,6 @@ export const STATUTS_EQUIPEMENT = [
   "Conforme avec réserve",
   "Non conforme",
 ];
-function genererIdentifiant(codeFiliale, equipementsExistants) {
-  const count =
-    equipementsExistants.filter((e) =>
-      e.id_equipement?.startsWith(`${codeFiliale}-`),
-    ).length + 1;
-  return `${codeFiliale}-${String(count).padStart(4, "0")}`;
-}
-
 const EquipementsContext = createContext(null);
 
 export function EquipementsProvider({ children }) {
@@ -76,12 +68,13 @@ export function EquipementsProvider({ children }) {
     );
   }
 
+  // L'identifiant (ex. "MP-0007") et le référentiel sont désormais générés
+  // par le serveur (voir EquipementController::store) : le calculer ici à
+  // partir de la liste chargée en mémoire pouvait entrer en collision avec
+  // un équipement déjà créé ailleurs (autre onglet, tests successifs...).
   async function creerEquipement(donnees) {
-    const id_equipement = genererIdentifiant(donnees.codeFiliale, equipements);
     const filiale = filiales.find((f) => f.code === donnees.codeFiliale);
     const corps = {
-      id_equipement,
-      referentiel: id_equipement,
       id_filiale: filiale?.id_filiale,
       id_site: donnees.id_site || null,
       id_type_equipement: donnees.id_type_equipement,
@@ -89,6 +82,7 @@ export function EquipementsProvider({ children }) {
       marque_modele: donnees.marque_modele,
       numero_serie: donnees.numero_serie,
       date_mise_en_service: donnees.date_mise_en_service,
+      periodicite_mois: donnees.periodicite_mois || null,
       statut: donnees.statut,
       fabricant: donnees.fabricant || null,
       modele: donnees.modele || null,
@@ -115,6 +109,7 @@ export function EquipementsProvider({ children }) {
       marque_modele: donnees.marque_modele,
       numero_serie: donnees.numero_serie,
       date_mise_en_service: donnees.date_mise_en_service,
+      periodicite_mois: donnees.periodicite_mois || null,
       statut: donnees.statut,
       fabricant: donnees.fabricant || null,
       modele: donnees.modele || null,

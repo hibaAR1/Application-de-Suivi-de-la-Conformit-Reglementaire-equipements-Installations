@@ -44,9 +44,15 @@ class ControleController extends Controller
         ]);
 
         // §3.2 : prochaine échéance = date contrôle + périodicité de l'équipement (calculée côté serveur)
-        $equipement = Equipement::findOrFail($data['id_equipement']);
+        // periodicite_mois est saisie sur l'équipement lui-même depuis peu ; on
+        // retombe sur celle de son type pour les équipements créés avant, puis
+        // sur 12 mois en tout dernier recours (jamais 0 : sinon échéance = date du contrôle).
+        $equipement = Equipement::with('typeEquipement')->findOrFail($data['id_equipement']);
+        $periodicite = $equipement->periodicite_mois
+            ?? $equipement->typeEquipement?->periodicite_controle
+            ?? 12;
         $prochaineEcheance = Carbon::parse($data['date_controle'])
-            ->addMonths((int) $equipement->periodicite_mois)
+            ->addMonths((int) $periodicite)
             ->toDateString();
 
         $cheminRapport = $request->hasFile('rapport')
