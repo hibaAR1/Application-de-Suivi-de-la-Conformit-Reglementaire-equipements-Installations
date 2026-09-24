@@ -6,6 +6,22 @@ import {
   useEquipements,
   STATUTS_EQUIPEMENT,
 } from "../context/EquipementsContext";
+import { useControles } from "../context/ControlesContext";
+
+// Un dernier contrôle ne peut être créé automatiquement ici que pour ces deux
+// statuts (correspondance directe avec le résultat du contrôle) — "Conforme
+// avec réserve" a besoin des détails de la réserve, saisis depuis Contrôles.
+const RESULTAT_PAR_STATUT = {
+  Conforme: "Favorable",
+  "Non conforme": "Défavorable",
+};
+
+function calculerProchaineEcheance(dateControle, periodiciteMois) {
+  if (!dateControle || !periodiciteMois) return null;
+  const d = new Date(dateControle);
+  d.setMonth(d.getMonth() + Number(periodiciteMois));
+  return d.toISOString().slice(0, 10);
+}
 
 // §3.1 du CDC — tous les champs obligatoires de la "fiche équipement",
 // sauf Identifiant et QR code qui sont générés automatiquement (non saisis ici).
@@ -20,7 +36,13 @@ export default function EquipementForm() {
     sitesDeFiliale,
     typesEquipement,
   } = useEquipements();
+  const { ajouterControle } = useControles();
   const existant = ref ? getByRef(ref) : null;
+  const dernierControleExistant = existant?.controles?.length
+    ? [...existant.controles].sort(
+        (a, b) => new Date(b.date_controle) - new Date(a.date_controle),
+      )[0]
+    : null;
 
   const [form, setForm] = useState(
     existant
@@ -33,6 +55,11 @@ export default function EquipementForm() {
           numero_serie: existant.numero_serie ?? "",
           date_mise_en_service: existant.date_mise_en_service ?? "",
           statut: existant.statut ?? "Conforme",
+          fabricant: existant.fabricant ?? "",
+          modele: existant.modele ?? "",
+          annee_fabrication: existant.annee_fabrication ?? "",
+          organisme_controle: existant.organisme_controle ?? "",
+          date_dernier_controle: "",
         }
       : {
           codeFiliale: filiales[0]?.code ?? "",
@@ -43,6 +70,11 @@ export default function EquipementForm() {
           numero_serie: "",
           date_mise_en_service: "",
           statut: "Conforme",
+          fabricant: "",
+          modele: "",
+          annee_fabrication: "",
+          organisme_controle: "",
+          date_dernier_controle: "",
         },
   );
   const [erreurs, setErreurs] = useState({});
@@ -54,6 +86,13 @@ export default function EquipementForm() {
     (t) => t.id_type_equipement === Number(form.id_type_equipement),
   );
   const sitesDisponibles = sitesDeFiliale(form.codeFiliale);
+  // Le contrôle rapide (statut → résultat direct) n'est proposé que pour
+  // Conforme/Non conforme ; "avec réserve" se fait depuis la page Contrôles.
+  const controleRapidePossible = form.statut in RESULTAT_PAR_STATUT;
+  const prochaineEcheancePrevue = calculerProchaineEcheance(
+    form.date_dernier_controle,
+    typeActuel?.periodicite_controle,
+  );
 
   function setChamp(champ, valeur) {
     setForm((f) => ({ ...f, [champ]: valeur }));
@@ -94,14 +133,35 @@ export default function EquipementForm() {
         ...form,
         id_site: form.id_site ? Number(form.id_site) : null,
         id_type_equipement: Number(form.id_type_equipement),
+        annee_fabrication: form.annee_fabrication
+          ? Number(form.annee_fabrication)
+          : null,
       };
+      let idEquipementCible;
       if (existant) {
         await modifierEquipement(existant.id_equipement, donnees);
-        navigate(`/equipements/${existant.id_equipement}`);
+        idEquipementCible = existant.id_equipement;
       } else {
-        await creerEquipement(donnees);
-        navigate("/equipements");
+        const cree = await creerEquipement(donnees);
+        idEquipementCible = cree.id_equipement;
       }
+
+      // Saisie rapide du dernier contrôle en même temps que la fiche, si
+      // remplie (facultatif — les contrôles restent gérables depuis Contrôles).
+      if (
+        form.date_dernier_controle &&
+        form.organisme_controle &&
+        controleRapidePossible
+      ) {
+        await ajouterControle({
+          equipementRef: idEquipementCible,
+          dateControle: form.date_dernier_controle,
+          organisme: form.organisme_controle,
+          resultat: RESULTAT_PAR_STATUT[form.statut],
+        });
+      }
+
+      navigate("/equipements");
     } catch (e2) {
       setErreurApi(e2.message);
     } finally {
@@ -165,7 +225,10 @@ export default function EquipementForm() {
             </div>
 
             <div className="field">
-              <label htmlFor="type">Type d'équipement</label>
+              <label htmlFor="type">
+                Type d'équipement{" "}
+                <span style={{ color: "var(--danger)" }}>*</span>
+              </label>
               <div style={{ display: "flex", gap: 8 }}>
                 <select
                   id="type"
@@ -203,7 +266,8 @@ export default function EquipementForm() {
 
             <div className="field">
               <label htmlFor="designation">
-                Désignation (100 caractères max)
+                Désignation (100 caractères max){" "}
+                <span style={{ color: "var(--danger)" }}>*</span>
               </label>
               <input
                 id="designation"
@@ -236,7 +300,10 @@ export default function EquipementForm() {
                 />
               </div>
               <div className="field">
-                <label htmlFor="serie">Numéro de série constructeur</label>
+                <label htmlFor="serie">
+                  Numéro de série constructeur{" "}
+                  <span style={{ color: "var(--danger)" }}>*</span>
+                </label>
                 <input
                   id="serie"
                   type="text"
@@ -259,7 +326,10 @@ export default function EquipementForm() {
               }}
             >
               <div className="field">
-                <label htmlFor="mes">Date de mise en service</label>
+                <label htmlFor="mes">
+                  Date de mise en service{" "}
+                  <span style={{ color: "var(--danger)" }}>*</span>
+                </label>
                 <input
                   id="mes"
                   type="date"
@@ -302,6 +372,140 @@ export default function EquipementForm() {
               </select>
             </div>
 
+            <div
+              style={{
+                fontSize: 11.5,
+                color: "var(--text-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                margin: "20px 0 8px",
+                borderTop: "1px solid var(--border)",
+                paddingTop: 16,
+              }}
+            >
+              Informations complémentaires
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 16,
+              }}
+            >
+              <div className="field">
+                <label htmlFor="fabricant">Fabricant</label>
+                <input
+                  id="fabricant"
+                  type="text"
+                  value={form.fabricant}
+                  onChange={(e) => setChamp("fabricant", e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="modele">Modèle</label>
+                <input
+                  id="modele"
+                  type="text"
+                  value={form.modele}
+                  onChange={(e) => setChamp("modele", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 16,
+              }}
+            >
+              <div className="field">
+                <label htmlFor="annee">Année de fabrication</label>
+                <input
+                  id="annee"
+                  type="number"
+                  min={1950}
+                  max={2100}
+                  value={form.annee_fabrication}
+                  onChange={(e) =>
+                    setChamp("annee_fabrication", e.target.value)
+                  }
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="organisme">Organisme de contrôle</label>
+                <input
+                  id="organisme"
+                  type="text"
+                  value={form.organisme_controle}
+                  onChange={(e) =>
+                    setChamp("organisme_controle", e.target.value)
+                  }
+                />
+              </div>
+            </div>
+
+            <div
+              style={{
+                fontSize: 11.5,
+                color: "var(--text-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                margin: "20px 0 8px",
+                borderTop: "1px solid var(--border)",
+                paddingTop: 16,
+              }}
+            >
+              Dernier contrôle{" "}
+              {dernierControleExistant &&
+                `(actuel : ${dernierControleExistant.date_controle})`}
+            </div>
+
+            {controleRapidePossible ? (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 16,
+                }}
+              >
+                <div className="field">
+                  <label htmlFor="dernier-controle">
+                    Date du dernier contrôle
+                  </label>
+                  <input
+                    id="dernier-controle"
+                    type="date"
+                    value={form.date_dernier_controle}
+                    onChange={(e) =>
+                      setChamp("date_dernier_controle", e.target.value)
+                    }
+                  />
+                  <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                    Facultatif — renseigner aussi l'organisme ci-dessus pour
+                    l'enregistrer.
+                  </span>
+                </div>
+                <div className="field">
+                  <label>Prochaine échéance (calculée)</label>
+                  <input
+                    type="text"
+                    value={prochaineEcheancePrevue ?? ""}
+                    disabled
+                  />
+                  <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                    Date du contrôle + périodicité du type.
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                Pour "Conforme avec réserve", saisissez le contrôle et la
+                réserve depuis la page Contrôles après la création.
+              </p>
+            )}
+
             {erreurApi && (
               <div
                 style={{
@@ -313,6 +517,17 @@ export default function EquipementForm() {
                 {erreurApi}
               </div>
             )}
+
+            <p
+              style={{
+                fontSize: 11,
+                color: "var(--text-muted)",
+                marginBottom: 10,
+              }}
+            >
+              <span style={{ color: "var(--danger)" }}>*</span> champs
+              obligatoires
+            </p>
 
             <div style={{ display: "flex", gap: 10 }}>
               <button
