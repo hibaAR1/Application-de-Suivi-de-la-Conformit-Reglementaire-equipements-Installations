@@ -1,19 +1,19 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import ProtectedRoute from "./components/ProtectedRoute";
-import AppLayout from "./components/AppLayout";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import EquipementsListe from "./pages/EquipementsListe";
-import EquipementForm from "./pages/EquipementForm";
-import Controles from "./pages/Controles";
-import ReserveForm from "./pages/ReserveForm";
-import Groupe from "./pages/Groupe";
-import MobileControl from "./pages/MobileControl";
-import ScanSimule from "./pages/ScanSimule";
-import Utilisateurs from "./pages/Utilisateurs"; // AJOUTE
-import UtilisateurForm from "./pages/UtilisateurForm"; // AJOUTE
-import GroupesEquipementAdmin from "./pages/GroupesEquipementAdmin";
-import TypesEquipementAdmin from "./pages/TypesEquipementAdmin";
+import ProtectedRoute from "./modules/auth/ProtectedRoute";
+import AppLayout from "./modules/layout/AppLayout";
+import Login from "./modules/auth/Login";
+import Dashboard from "./modules/dashboard/Dashboard";
+import EquipementsListe from "./modules/equipements/EquipementsListe";
+import EquipementForm from "./modules/equipements/EquipementForm";
+import Controles from "./modules/controles/Controles";
+import ReserveForm from "./modules/reserves/ReserveForm";
+import Groupe from "./modules/groupe-consolide/Groupe";
+import MobileControl from "./modules/scan/MobileControl";
+import ScanSimule from "./modules/scan/ScanSimule";
+import Utilisateurs from "./modules/utilisateurs/Utilisateurs"; // AJOUTE
+import UtilisateurForm from "./modules/utilisateurs/UtilisateurForm"; // AJOUTE
+import GroupesEquipementAdmin from "./modules/equipements/GroupesEquipementAdmin";
+import TypesEquipementAdmin from "./modules/equipements/TypesEquipementAdmin";
 
 function App() {
   return (
