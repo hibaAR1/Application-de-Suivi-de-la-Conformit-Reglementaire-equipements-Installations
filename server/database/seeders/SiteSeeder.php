@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Filiale;
-use App\Models\Site;
+use App\Modules\Filiale\Filiale;
+use App\Modules\Site\Site;
 use Illuminate\Database\Seeder;
 
 class SiteSeeder extends Seeder
