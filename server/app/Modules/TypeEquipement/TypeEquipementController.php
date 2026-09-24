@@ -5,6 +5,7 @@ namespace App\Modules\TypeEquipement;
 use App\Http\Controllers\Controller;
 use App\Modules\TypeEquipement\Requests\StoreTypeEquipementRequest;
 use App\Modules\TypeEquipement\Requests\UpdateTypeEquipementRequest;
+use App\Modules\TypeEquipement\Resources\TypeEquipementResource;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Str;
 
@@ -12,7 +13,7 @@ class TypeEquipementController extends Controller
 {
     public function index()
     {
-        return TypeEquipement::orderBy('libelle')->get();
+        return TypeEquipementResource::collection(TypeEquipement::orderBy('libelle')->get());
     }
 
     public function store(StoreTypeEquipementRequest $request)
@@ -26,7 +27,7 @@ class TypeEquipementController extends Controller
             'caracteristiques_definition' => $this->construireDefinition($data['caracteristiques'] ?? []),
         ]);
 
-        return response()->json($type, 201);
+        return response()->json(new TypeEquipementResource($type), 201);
     }
 
     // Page "Données de base > Types d'équipement" (édition depuis
@@ -44,7 +45,7 @@ class TypeEquipementController extends Controller
             'caracteristiques_definition' => $this->construireDefinition($data['caracteristiques'] ?? []),
         ]);
 
-        return $type;
+        return new TypeEquipementResource($type);
     }
 
     public function destroy($id)

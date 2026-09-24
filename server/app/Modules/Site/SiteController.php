@@ -4,6 +4,7 @@ namespace App\Modules\Site;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Site\Requests\StoreSiteRequest;
+use App\Modules\Site\Resources\SiteResource;
 use Illuminate\Http\Request;
 
 class SiteController extends Controller
@@ -16,11 +17,11 @@ class SiteController extends Controller
             $query->where('id_filiale', $request->id_filiale);
         }
 
-        return $query->orderBy('libelle')->get();
+        return SiteResource::collection($query->orderBy('libelle')->get());
     }
 
     public function store(StoreSiteRequest $request)
     {
-        return Site::create($request->validated());
+        return new SiteResource(Site::create($request->validated()));
     }
 }

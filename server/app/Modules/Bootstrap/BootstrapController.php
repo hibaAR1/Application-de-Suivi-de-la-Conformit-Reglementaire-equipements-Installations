@@ -4,9 +4,14 @@ namespace App\Modules\Bootstrap;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Equipement\Equipement;
+use App\Modules\Equipement\Resources\EquipementResource;
 use App\Modules\Filiale\Filiale;
+use App\Modules\Filiale\Resources\FilialeResource;
 use App\Modules\GroupeEquipement\GroupeEquipement;
+use App\Modules\GroupeEquipement\Resources\GroupeEquipementResource;
+use App\Modules\Site\Resources\SiteResource;
 use App\Modules\Site\Site;
+use App\Modules\TypeEquipement\Resources\TypeEquipementResource;
 use App\Modules\TypeEquipement\TypeEquipement;
 
 class BootstrapController extends Controller
@@ -21,11 +26,13 @@ class BootstrapController extends Controller
     public function index()
     {
         return [
-            'equipements' => Equipement::with(['filiale', 'site', 'typeEquipement', 'controles.reserves'])->get(),
-            'filiales' => Filiale::all(),
-            'sites' => Site::orderBy('libelle')->get(),
-            'typesEquipement' => TypeEquipement::orderBy('libelle')->get(),
-            'groupesEquipement' => GroupeEquipement::orderBy('libelle')->get(),
+            'equipements' => EquipementResource::collection(
+                Equipement::with(['filiale', 'site', 'typeEquipement', 'controles.reserves'])->get()
+            ),
+            'filiales' => FilialeResource::collection(Filiale::all()),
+            'sites' => SiteResource::collection(Site::orderBy('libelle')->get()),
+            'typesEquipement' => TypeEquipementResource::collection(TypeEquipement::orderBy('libelle')->get()),
+            'groupesEquipement' => GroupeEquipementResource::collection(GroupeEquipement::orderBy('libelle')->get()),
         ];
     }
 }

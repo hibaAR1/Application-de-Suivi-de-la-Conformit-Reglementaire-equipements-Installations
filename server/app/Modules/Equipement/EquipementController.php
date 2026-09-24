@@ -5,6 +5,7 @@ namespace App\Modules\Equipement;
 use App\Http\Controllers\Controller;
 use App\Modules\Equipement\Requests\StoreEquipementRequest;
 use App\Modules\Equipement\Requests\UpdateEquipementRequest;
+use App\Modules\Equipement\Resources\EquipementResource;
 use App\Modules\Filiale\Filiale;
 use App\Modules\Site\Site;
 use App\Modules\TypeEquipement\TypeEquipement;
@@ -22,12 +23,14 @@ class EquipementController extends Controller
             $query->where('id_filiale', $request->id_filiale);
         }
 
-        return $query->get();
+        return EquipementResource::collection($query->get());
     }
 
     public function show($id)
     {
-        return Equipement::with(['filiale', 'site', 'typeEquipement', 'controles.reserves', 'rapports'])->findOrFail($id);
+        $equipement = Equipement::with(['filiale', 'site', 'typeEquipement', 'controles.reserves', 'rapports'])->findOrFail($id);
+
+        return new EquipementResource($equipement);
     }
 
     public function store(StoreEquipementRequest $request)
@@ -62,7 +65,7 @@ class EquipementController extends Controller
             $data['referentiel'] = $idCandidat;
 
             try {
-                return Equipement::create($data)->load(['filiale', 'site', 'typeEquipement']);
+                return new EquipementResource(Equipement::create($data)->load(['filiale', 'site', 'typeEquipement']));
             } catch (\Illuminate\Database\QueryException $e) {
                 continue; // collision concurrente sur cet id précis : on retente le suivant
             }
@@ -89,7 +92,7 @@ class EquipementController extends Controller
 
         $equipement->update($data);
 
-        return $equipement->load(['filiale', 'site', 'typeEquipement']);
+        return new EquipementResource($equipement->load(['filiale', 'site', 'typeEquipement']));
     }
 
     // Bouton "Supprimer" réservé au super admin dans la liste des

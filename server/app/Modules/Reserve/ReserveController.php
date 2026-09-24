@@ -5,17 +5,18 @@ namespace App\Modules\Reserve;
 use App\Http\Controllers\Controller;
 use App\Modules\Reserve\Requests\StoreReserveRequest;
 use App\Modules\Reserve\Requests\UpdateReserveRequest;
+use App\Modules\Reserve\Resources\ReserveResource;
 
 class ReserveController extends Controller
 {
     public function index()
     {
-        return Reserve::with('controle')->get();
+        return ReserveResource::collection(Reserve::with('controle')->get());
     }
 
     public function show($id)
     {
-        return Reserve::with('controle')->findOrFail($id);
+        return new ReserveResource(Reserve::with('controle')->findOrFail($id));
     }
 
     public function store(StoreReserveRequest $request)
@@ -25,7 +26,7 @@ class ReserveController extends Controller
         // §3.2 du CDC : une réserve nouvellement créée démarre toujours "Ouverte".
         $data['statut'] = 'Ouverte';
 
-        return Reserve::create($data);
+        return new ReserveResource(Reserve::create($data));
     }
 
     public function update(UpdateReserveRequest $request, $id)
@@ -40,6 +41,6 @@ class ReserveController extends Controller
         }
 
         $reserve->update($data);
-        return $reserve;
+        return new ReserveResource($reserve);
     }
 }
