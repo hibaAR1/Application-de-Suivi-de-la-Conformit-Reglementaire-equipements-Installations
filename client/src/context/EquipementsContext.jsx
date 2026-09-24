@@ -53,6 +53,18 @@ export function EquipementsProvider({ children }) {
         setSites(d.sites);
         setTypesEquipement(d.typesEquipement);
       })
+      .catch(() =>
+        // Si /donnees-initiales échoue pour une raison quelconque (route pas
+        // encore prise en compte côté serveur, erreur ponctuelle...), on
+        // retombe sur les 4 anciens appels séparés plutôt que de laisser les
+        // listes déroulantes (filiales/types) vides pour toute la session.
+        Promise.all([
+          apiFetch("/equipements").then(setEquipements),
+          apiFetch("/filiales").then(setFiliales),
+          apiFetch("/sites").then(setSites),
+          apiFetch("/type-equipements").then(setTypesEquipement),
+        ]),
+      )
       .catch((e) => setErreur(e.message))
       .finally(() => setChargement(false));
   }, []);

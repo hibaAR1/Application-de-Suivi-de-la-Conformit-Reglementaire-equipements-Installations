@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
+import { useEquipements } from "./EquipementsContext";
 import { FILIALES_THEME } from "../data/couleursFiliale";
-import { apiFetch } from "../utils/api";
 
 const FilialeThemeContext = createContext(null);
 
@@ -27,8 +27,15 @@ function texteLisible(hexFond) {
 
 export function FilialeThemeProvider({ children }) {
   const { user } = useAuth();
+  // La liste des filiales vient désormais d'EquipementsContext (chargée en
+  // une fois via /donnees-initiales) au lieu d'un appel /filiales séparé ici.
+  // Avant, les deux appels partaient en même temps au chargement/F5 : le
+  // sélecteur de filiale de la Sidebar (qui a besoin de cette liste pour
+  // s'afficher, voir onglets ci-dessous) pouvait rester cette fraction de
+  // seconde sans rien afficher le temps que CE second appel réponde, donnant
+  // l'impression que la liste déroulante "ne s'affiche pas" après F5.
+  const { filiales } = useEquipements();
   const [filialeActive, setFilialeActive] = useState(null);
-  const [filiales, setFiliales] = useState([]);
 
   useEffect(() => {
     if (!user) {
@@ -38,16 +45,6 @@ export function FilialeThemeProvider({ children }) {
     setFilialeActive(
       (prev) => prev ?? (user.voitToutesFiliales ? "GROUPE" : user.filialeCode),
     );
-  }, [user]);
-
-  // Charge la liste complète des filiales (codes + libellés) une seule fois ici,
-  // pour que n'importe quel composant (Sidebar, Dashboard...) puisse afficher
-  // le sélecteur de filiale sans refaire l'appel API de son côté.
-  useEffect(() => {
-    if (!user) return;
-    apiFetch("/filiales")
-      .then(setFiliales)
-      .catch(() => {});
   }, [user]);
 
   // Filiales que l'utilisateur a le droit de consulter (+ "GROUPE" si vue consolidée)
