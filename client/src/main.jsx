@@ -10,13 +10,13 @@ import "./styles/tokens.css";
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <AuthProvider>
-      <FilialeThemeProvider>
-        <EquipementsProvider>
+      <EquipementsProvider>
+        <FilialeThemeProvider>
           <ControlesProvider>
             <App />
           </ControlesProvider>
-        </EquipementsProvider>
-      </FilialeThemeProvider>
+        </FilialeThemeProvider>
+      </EquipementsProvider>
     </AuthProvider>
   </StrictMode>,
 );

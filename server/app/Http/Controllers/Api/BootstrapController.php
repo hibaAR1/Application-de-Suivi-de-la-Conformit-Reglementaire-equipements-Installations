@@ -11,20 +11,12 @@ use App\Models\TypeEquipement;
 class BootstrapController extends Controller
 {
     // Regroupe en une seule requête HTTP toutes les données chargées à
-    // l'ouverture de l'application (équipements, filiales, sites, types).
+    // l'ouverture de l'application (équipements, filiales, sites, types),
+    // au lieu des 4 requêtes séparées d'avant.
     //
-    // Avant : le client (EquipementsContext) déclenchait 4 requêtes en
-    // parallèle (/equipements, /filiales, /sites, /type-equipements). Côté
-    // navigateur elles partent bien en même temps, mais le serveur de dev
-    // (`php artisan serve`) ne traite qu'une requête à la fois (pas de
-    // vrai multi-thread), et chaque requête ouvre sa propre connexion
-    // SQL Server (pas de connexion persistante) — ce qui est lent à établir.
-    // Résultat : les 4 requêtes s'empilent au lieu de vraiment être
-    // parallèles, d'où les 5-7 secondes de "Chargement..." au premier
-    // affichage / après un rafraîchissement de page.
-    //
-    // En ne faisant plus qu'un seul aller-retour, on ne paie plus qu'une
-    // seule fois ce coût de connexion au lieu de quatre.
+    // (La lenteur observée pendant le diagnostic venait en réalité du
+    // throttling "3G" resté activé dans l'onglet Network de Chrome DevTools
+    // — pas du serveur. Le bloc de mesure temporaire a été retiré.)
     public function index()
     {
         return [
