@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Plate from "../components/Plate";
 import Badge from "../components/Badge";
@@ -9,6 +9,22 @@ import NouveauGroupeModal from "../components/NouveauGroupeModal";
 import { useEquipements } from "../context/EquipementsContext";
 import { useFilialeTheme } from "../context/FilialeThemeContext";
 import { getGroupesPersonnalises } from "../utils/groupes";
+import {
+  telechargerCanevasXlsx,
+  lireXlsxEquipements,
+} from "../utils/excelEquipements";
+
+// Colonnes du fichier Excel d'import des équipements, dans cet ordre.
+const COLONNES_CSV = [
+  "Filiale",
+  "Site",
+  "Type",
+  "Designation",
+  "Marque_Modele",
+  "Numero_Serie",
+  "Date_Mise_En_Service",
+  "Statut",
+];
 
 const STATUT_TONE = {
   Conforme: "success",
@@ -82,7 +98,16 @@ function formaterDate(date) {
 // categorie : valeur initiale du filtre Fixe/Mobile ("Fixe" pour le lien "Équipements
 // fixes" du menu). L'utilisateur peut ensuite changer ce filtre depuis la page.
 export default function EquipementsListe({ categorie }) {
-  const { equipements, typesEquipement, chargement, erreur } = useEquipements();
+  const {
+    equipements,
+    typesEquipement,
+    chargement,
+    erreur,
+    filiales: filialesToutes,
+    sites: sitesTous,
+    sitesDeFiliale,
+    creerEquipement,
+  } = useEquipements();
   const { filiales, onglets, filialeActive } = useFilialeTheme();
   const [recherche, setRecherche] = useState("");
   const [filialeFiltre, setFilialeFiltre] = useState("");
@@ -94,7 +119,99 @@ export default function EquipementsListe({ categorie }) {
   const [nouveauTypeOuvert, setNouveauTypeOuvert] = useState(false);
   const [nouveauGroupeOuvert, setNouveauGroupeOuvert] = useState(false);
   const [versionGroupes, setVersionGroupes] = useState(0);
+  const [importEnCours, setImportEnCours] = useState(false);
+  const [resultatImport, setResultatImport] = useState(null);
+  const inputImportRef = useRef(null);
   const navigate = useNavigate();
+
+  // --- Canevas : classeur .xlsx vierge (juste les libellés de colonnes,
+  // aucune donnée) avec de vraies listes déroulantes Excel pour Filiale/
+  // Site/Type/Statut, à remplir puis réimporter avec "Importer". ---
+  function telechargerCanevas() {
+    telechargerCanevasXlsx({
+      colonnes: COLONNES_CSV,
+      filiales: filialesToutes.map((f) => f.code),
+      sites: [...new Set(sitesTous.map((s) => s.libelle))],
+      types: typesEquipement.map((t) => t.libelle),
+      statuts: Object.keys(STATUT_TONE),
+    });
+  }
+
+  // --- Import : crée un équipement par ligne du fichier .xlsx (via l'API
+  // existante, mêmes règles que le formulaire de création). ---
+  async function gererImportFichier(event) {
+    const fichier = event.target.files?.[0];
+    event.target.value = ""; // permet de réimporter le même fichier ensuite
+    if (!fichier) return;
+
+    setImportEnCours(true);
+    setResultatImport(null);
+    const lignes = await lireXlsxEquipements(fichier);
+
+    let succes = 0;
+    const erreurs = [];
+
+    for (let i = 0; i < lignes.length; i++) {
+      const { numeroLigne, valeurs } = lignes[i];
+      const [
+        codeFiliale,
+        siteLibelle,
+        typeLibelle,
+        designation,
+        marqueModele,
+        numeroSerie,
+        dateMiseEnService,
+        statut,
+      ] = valeurs.map((v) => v?.trim() ?? "");
+
+      const filiale = filialesToutes.find(
+        (f) => f.code?.toLowerCase() === codeFiliale.toLowerCase(),
+      );
+      if (!filiale) {
+        erreurs.push(
+          `Ligne ${numeroLigne} : filiale "${codeFiliale}" inconnue.`,
+        );
+        continue;
+      }
+      const type = typesEquipement.find(
+        (t) => t.libelle?.toLowerCase() === typeLibelle.toLowerCase(),
+      );
+      if (!type) {
+        erreurs.push(`Ligne ${numeroLigne} : type "${typeLibelle}" inconnu.`);
+        continue;
+      }
+      if (!designation || !numeroSerie || !dateMiseEnService) {
+        erreurs.push(
+          `Ligne ${numeroLigne} : désignation, n° de série et date de mise en service sont obligatoires.`,
+        );
+        continue;
+      }
+      const site = siteLibelle
+        ? sitesDeFiliale(codeFiliale).find(
+            (s) => s.libelle?.toLowerCase() === siteLibelle.toLowerCase(),
+          )
+        : null;
+
+      try {
+        await creerEquipement({
+          codeFiliale,
+          id_site: site?.id_site ?? "",
+          id_type_equipement: type.id_type_equipement,
+          designation,
+          marque_modele: marqueModele,
+          numero_serie: numeroSerie,
+          date_mise_en_service: dateMiseEnService,
+          statut: statut || "Conforme",
+        });
+        succes++;
+      } catch (e) {
+        erreurs.push(`Ligne ${numeroLigne} : ${e.message}`);
+      }
+    }
+
+    setImportEnCours(false);
+    setResultatImport({ succes, total: lignes.length, erreurs });
+  }
 
   const titre = TITRES[categorieFiltre] ?? "Équipements";
 
@@ -187,15 +304,86 @@ export default function EquipementsListe({ categorie }) {
             {compteurs.fixes} fixe(s)
           </div>
         </div>
-        <button
-          className="btn btn-primary"
-          onClick={() => navigate("/equipements/nouveau")}
-        >
-          + Nouvel équipement
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={telechargerCanevas}
+          >
+            Canevas
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={importEnCours}
+            onClick={() => inputImportRef.current?.click()}
+          >
+            {importEnCours ? "Import en cours…" : "Importer"}
+          </button>
+          <input
+            ref={inputImportRef}
+            type="file"
+            accept=".xlsx"
+            style={{ display: "none" }}
+            onChange={gererImportFichier}
+          />
+          <button
+            className="btn btn-primary"
+            onClick={() => navigate("/equipements/nouveau")}
+          >
+            + Nouvel équipement
+          </button>
+        </div>
       </div>
 
       <div className="content">
+        {resultatImport && (
+          <Plate
+            style={{
+              padding: 14,
+              marginBottom: 16,
+              borderColor:
+                resultatImport.erreurs.length > 0
+                  ? "var(--danger)"
+                  : "var(--success)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 600 }}>
+                Import terminé : {resultatImport.succes} /{" "}
+                {resultatImport.total} équipement(s) créé(s).
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ padding: "2px 8px", fontSize: 11.5 }}
+                onClick={() => setResultatImport(null)}
+              >
+                Fermer
+              </button>
+            </div>
+            {resultatImport.erreurs.length > 0 && (
+              <ul
+                style={{
+                  marginTop: 8,
+                  paddingLeft: 18,
+                  fontSize: 12.5,
+                  color: "var(--danger)",
+                }}
+              >
+                {resultatImport.erreurs.map((e, i) => (
+                  <li key={i}>{e}</li>
+                ))}
+              </ul>
+            )}
+          </Plate>
+        )}
         <div
           style={{
             display: "flex",
@@ -330,7 +518,12 @@ export default function EquipementsListe({ categorie }) {
                       const dernier = dernierControle(eq);
                       const nbReserves = reservesOuvertes(eq);
                       return (
-                        <tr key={eq.id_equipement} className="rowlink">
+                        <tr
+                          key={eq.id_equipement}
+                          className="rowlink"
+                          style={{ cursor: "pointer" }}
+                          onClick={() => setFichierOuvert(eq.id_equipement)}
+                        >
                           <td className="ref">{eq.id_equipement}</td>
                           <td style={{ fontWeight: 600 }}>
                             {eq.filiale?.libelle ?? "—"}
@@ -372,9 +565,10 @@ export default function EquipementsListe({ categorie }) {
                                 type="button"
                                 className="btn btn-primary"
                                 style={{ padding: "4px 10px", fontSize: 12.5 }}
-                                onClick={() =>
-                                  setFichierOuvert(eq.id_equipement)
-                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFichierOuvert(eq.id_equipement);
+                                }}
                               >
                                 Ouvrir
                               </button>
@@ -383,9 +577,10 @@ export default function EquipementsListe({ categorie }) {
                                 className="btn btn-secondary"
                                 title="Étiquette QR"
                                 style={{ padding: "4px 8px" }}
-                                onClick={() =>
-                                  setFicheOuverte(eq.id_equipement)
-                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFicheOuverte(eq.id_equipement);
+                                }}
                               >
                                 <IconQr />
                               </button>

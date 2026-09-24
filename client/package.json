@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview"
   },
-  "dependencies": {
+   "dependencies": {
+    "exceljs": "^4.4.0",
     "html5-qrcode": "^2.3.8",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.8",
