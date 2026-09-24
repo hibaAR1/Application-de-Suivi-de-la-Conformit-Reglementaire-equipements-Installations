@@ -1,17 +1,36 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 // Remplace les anciens statuts (En service / Hors service / En réserve / Réformé)
 // par les 3 nouveaux demandés : Conforme / Non conforme / Non conforme avec réserve.
 // SQL Server crée la contrainte CHECK de l'enum() avec un nom généré automatiquement
 // (pas "equipement_statut_check"), donc on la retrouve dynamiquement pour la supprimer,
 // pareil pour la contrainte DEFAULT, avant de migrer les données existantes.
+//
+// En base réelle (SQL Server, Laragon), cette migration est déjà passée — ce
+// bloc ne se réexécute jamais là-bas. Le seul rôle de la branche "sinon" est
+// de permettre à SQLite (tests PHPUnit) de reproduire le même résultat, sans
+// la syntaxe spécifique à SQL Server que SQLite ne comprend pas.
 return new class extends Migration
 {
     public function up(): void
     {
+        if (DB::getDriverName() !== 'sqlsrv') {
+            Schema::table('equipement', function (Blueprint $table) {
+                $table->string('statut')->default('Conforme')->change();
+            });
+
+            DB::table('equipement')->where('statut', 'En service')->update(['statut' => 'Conforme']);
+            DB::table('equipement')->where('statut', 'En réserve')->update(['statut' => 'Conforme avec réserve']);
+            DB::table('equipement')->whereIn('statut', ['Hors service', 'Réformé'])->update(['statut' => 'Non conforme']);
+
+            return;
+        }
+
         // 1) Supprime la contrainte CHECK existante sur equipement.statut
         DB::statement("
             DECLARE @nom NVARCHAR(200)
@@ -48,6 +67,18 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::getDriverName() !== 'sqlsrv') {
+            Schema::table('equipement', function (Blueprint $table) {
+                $table->string('statut')->default('En service')->change();
+            });
+
+            DB::table('equipement')->where('statut', 'Conforme')->update(['statut' => 'En service']);
+            DB::table('equipement')->where('statut', 'Conforme avec réserve')->update(['statut' => 'En réserve']);
+            DB::table('equipement')->where('statut', 'Non conforme')->update(['statut' => 'Hors service']);
+
+            return;
+        }
+
         DB::statement("ALTER TABLE equipement DROP CONSTRAINT CK_equipement_statut");
         DB::statement("ALTER TABLE equipement DROP CONSTRAINT DF_equipement_statut");
 
