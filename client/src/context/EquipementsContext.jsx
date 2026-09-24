@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import { apiFetch } from "../utils/api";
+import { useAuth } from "./AuthContext";
 
 export const STATUTS_EQUIPEMENT = [
   "Conforme",
@@ -15,6 +16,7 @@ export const STATUTS_EQUIPEMENT = [
 const EquipementsContext = createContext(null);
 
 export function EquipementsProvider({ children }) {
+  const { isAuthenticated } = useAuth();
   const [equipements, setEquipements] = useState([]);
   const [filiales, setFiliales] = useState([]);
   const [sites, setSites] = useState([]);
@@ -51,7 +53,22 @@ export function EquipementsProvider({ children }) {
   // rafraichirEquipements()/rafraichirTypes() restent utilisées telles
   // quelles après une création/modification (un seul type de donnée à
   // rafraîchir à ce moment-là, pas besoin du bundle complet).
+  //
+  // Ce chargement dépend maintenant de isAuthenticated (et pas juste "au
+  // montage", une seule fois) : EquipementsProvider est monté pour toute
+  // l'application, y compris la page de connexion — sans cette dépendance,
+  // ce premier aller-retour partait AVANT que l'utilisateur soit connecté,
+  // échouait en "Unauthenticated", et ne se relançait jamais après une
+  // connexion réussie (pas de rechargement complet de la page à ce
+  // moment-là) : la liste des équipements restait vide indéfiniment.
   useEffect(() => {
+    if (!isAuthenticated) {
+      // Pas encore connecté (page de connexion) : on ne tente rien, pour
+      // éviter un aller-retour 401 inutile avant même d'être authentifié.
+      setChargement(false);
+      return;
+    }
+
     setChargement(true);
     apiFetch("/donnees-initiales")
       .then((d) => {
@@ -77,7 +94,7 @@ export function EquipementsProvider({ children }) {
       )
       .catch((e) => setErreur(e.message))
       .finally(() => setChargement(false));
-  }, []);
+  }, [isAuthenticated]);
 
   function getByRef(ref) {
     if (!ref) return null;

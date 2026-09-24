@@ -10,7 +10,6 @@ import { useEquipements } from "../context/EquipementsContext";
 import { useControles } from "../context/ControlesContext";
 import { useFilialeTheme } from "../context/FilialeThemeContext";
 import { useAuth } from "../context/AuthContext";
-import { getGroupesPersonnalises } from "../utils/groupes";
 import {
   telechargerCanevasXlsx,
   lireXlsxEquipements,
@@ -139,7 +138,6 @@ export default function EquipementsListe({ categorie }) {
   const [ficheOuverte, setFicheOuverte] = useState(null);
   const [nouveauTypeOuvert, setNouveauTypeOuvert] = useState(false);
   const [nouveauGroupeOuvert, setNouveauGroupeOuvert] = useState(false);
-  const [versionGroupes, setVersionGroupes] = useState(0);
   const [importEnCours, setImportEnCours] = useState(false);
   const [resultatImport, setResultatImport] = useState(null);
   const inputImportRef = useRef(null);
@@ -302,14 +300,15 @@ export default function EquipementsListe({ categorie }) {
   const typesDisponibles = typesEquipement;
 
   // Liste des groupes proposés : Fixe/Mobile, plus ceux réellement utilisés par
-  // les types existants, plus ceux créés à vide depuis la popup "+ nouveau groupe".
+  // les types existants, plus tous ceux de la table groupe_equipement (page
+  // "Données de base > Groupes" et popup "+ nouveau groupe" — les deux
+  // passent maintenant par la même table, plus de doublon en localStorage).
   const groupesDisponibles = useMemo(() => {
     const set = new Set(["Fixe", "Mobile"]);
     typesEquipement.forEach((t) => t.categorie && set.add(t.categorie));
-    getGroupesPersonnalises().forEach((g) => set.add(g));
+    groupesEquipement.forEach((g) => set.add(g.libelle));
     return Array.from(set);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typesEquipement, versionGroupes]);
+  }, [typesEquipement, groupesEquipement]);
 
   const filtres = useMemo(() => {
     const q = recherche.trim().toLowerCase();
@@ -769,8 +768,7 @@ export default function EquipementsListe({ categorie }) {
         <NouveauGroupeModal
           onClose={() => setNouveauGroupeOuvert(false)}
           onCree={(groupe) => {
-            setVersionGroupes((v) => v + 1);
-            setCategorieFiltre(groupe);
+            setCategorieFiltre(groupe.libelle);
             setTypeFiltre("");
           }}
         />

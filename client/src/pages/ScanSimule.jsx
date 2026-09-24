@@ -2,6 +2,22 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Html5QrcodeScanner } from "html5-qrcode";
 
+// Le QR code généré par la Fiche Technique (voir FicheTechniqueModal.jsx,
+// `valeurQr`) encode une URL complète — `${origin}/scan/{id}` — pas juste
+// l'identifiant tout seul. On ne garde que le dernier segment de chemin
+// dans ce cas, sinon on navigue vers "/scan/<url complète>" et la fiche ne
+// se trouve jamais.
+function extraireIdentifiant(texteBrut) {
+  const texte = texteBrut.trim();
+  try {
+    const url = new URL(texte);
+    const segments = url.pathname.split("/").filter(Boolean);
+    return segments[segments.length - 1] || texte;
+  } catch {
+    return texte;
+  }
+}
+
 export default function ScanSimule() {
   const navigate = useNavigate();
   const conteneurId = "lecteur-qr";
@@ -20,10 +36,11 @@ export default function ScanSimule() {
       (texteDecode) => {
         if (dejaNavigue.current) return;
         dejaNavigue.current = true;
+        const ref = extraireIdentifiant(texteDecode);
         setEtat("detecte");
-        setRefDetectee(texteDecode);
+        setRefDetectee(ref);
         scanner.clear().catch(() => {});
-        setTimeout(() => navigate(`/scan/${texteDecode}`), 900);
+        setTimeout(() => navigate(`/scan/${ref}`), 900);
       },
       () => {
         // Appelé à chaque frame sans QR détecté — signe que la caméra tourne bien.
