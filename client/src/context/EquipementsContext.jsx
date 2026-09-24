@@ -36,16 +36,26 @@ export function EquipementsProvider({ children }) {
       .catch((e) => setErreur(e.message));
   }, []);
 
+  // Au premier chargement (ou F5), on récupère tout en un seul aller-retour
+  // (/donnees-initiales) au lieu de 4 requêtes séparées (équipements,
+  // filiales, sites, types) : lancées "en parallèle" depuis le navigateur,
+  // elles s'empilaient quand même sur le serveur de dev, d'où les 5-7
+  // secondes de "Chargement..." qu'on pouvait voir avant. Les fonctions
+  // rafraichirEquipements()/rafraichirTypes() restent utilisées telles
+  // quelles après une création/modification (un seul type de donnée à
+  // rafraîchir à ce moment-là, pas besoin du bundle complet).
   useEffect(() => {
-    rafraichirEquipements();
-    apiFetch("/filiales")
-      .then(setFiliales)
-      .catch((e) => setErreur(e.message));
-    apiFetch("/sites")
-      .then(setSites)
-      .catch((e) => setErreur(e.message));
-    rafraichirTypes();
-  }, [rafraichirEquipements, rafraichirTypes]);
+    setChargement(true);
+    apiFetch("/donnees-initiales")
+      .then((d) => {
+        setEquipements(d.equipements);
+        setFiliales(d.filiales);
+        setSites(d.sites);
+        setTypesEquipement(d.typesEquipement);
+      })
+      .catch((e) => setErreur(e.message))
+      .finally(() => setChargement(false));
+  }, []);
 
   function getByRef(ref) {
     if (!ref) return null;
