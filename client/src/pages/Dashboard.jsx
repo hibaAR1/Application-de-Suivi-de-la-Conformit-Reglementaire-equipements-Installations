@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Plate from "../components/Plate";
 import Badge from "../components/Badge";
 import Gauge from "../components/Gauge";
+import EquipementModal from "../components/EquipementModal";
 import { IconQr } from "../components/icons";
 import { useAuth } from "../context/AuthContext";
 import { useFilialeTheme } from "../context/FilialeThemeContext";
@@ -27,6 +28,7 @@ export default function Dashboard() {
   const [equipements, setEquipements] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState(null);
+  const [fichierOuvert, setFichierOuvert] = useState(null);
   // Charge les équipements (+ contrôles + réserves) selon la filiale active
   useEffect(() => {
     setChargement(true);
@@ -228,9 +230,7 @@ export default function Dashboard() {
                             key={e.equipement.id_equipement}
                             className="rowlink"
                             onClick={() =>
-                              navigate(
-                                `/equipements/${e.equipement.id_equipement}`,
-                              )
+                              setFichierOuvert(e.equipement.id_equipement)
                             }
                           >
                             <td>
@@ -277,7 +277,7 @@ export default function Dashboard() {
                         key={r.reserve.id_reserve}
                         className="rowlink"
                         onClick={() =>
-                          navigate(`/equipements/${r.equipement.id_equipement}`)
+                          setFichierOuvert(r.equipement.id_equipement)
                         }
                         style={{
                           padding: "12px 16px",
@@ -322,6 +322,13 @@ export default function Dashboard() {
           </>
         )}
       </div>
+
+      {fichierOuvert && (
+        <EquipementModal
+          id={fichierOuvert}
+          onClose={() => setFichierOuvert(null)}
+        />
+      )}
     </>
   );
 }

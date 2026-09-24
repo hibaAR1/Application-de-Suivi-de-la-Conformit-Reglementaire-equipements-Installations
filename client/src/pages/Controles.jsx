@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import Plate from "../components/Plate";
 import Badge from "../components/Badge";
+import EquipementModal from "../components/EquipementModal";
 import { useControles } from "../context/ControlesContext";
 import { useEquipements } from "../context/EquipementsContext";
 
@@ -27,7 +27,7 @@ export default function Controles() {
   const [filtre, setFiltre] = useState("tous");
   const { controles, chargement, erreur } = useControles();
   const { getByRef } = useEquipements();
-  const navigate = useNavigate();
+  const [fichierOuvert, setFichierOuvert] = useState(null);
 
   const controlesFiltres = useMemo(
     () =>
@@ -103,9 +103,7 @@ export default function Controles() {
                         <tr
                           key={c.id_controle}
                           className="rowlink"
-                          onClick={() =>
-                            navigate(`/equipements/${c.id_equipement}`)
-                          }
+                          onClick={() => setFichierOuvert(c.id_equipement)}
                         >
                           <td>
                             <div style={{ fontWeight: 600 }}>
@@ -197,6 +195,13 @@ export default function Controles() {
           </>
         )}
       </div>
+
+      {fichierOuvert && (
+        <EquipementModal
+          id={fichierOuvert}
+          onClose={() => setFichierOuvert(null)}
+        />
+      )}
     </>
   );
 }

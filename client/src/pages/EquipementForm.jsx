@@ -99,8 +99,8 @@ export default function EquipementForm() {
         await modifierEquipement(existant.id_equipement, donnees);
         navigate(`/equipements/${existant.id_equipement}`);
       } else {
-        const cree = await creerEquipement(donnees);
-        navigate(`/equipements/${cree.id_equipement}`);
+        await creerEquipement(donnees);
+        navigate("/equipements");
       }
     } catch (e2) {
       setErreurApi(e2.message);
