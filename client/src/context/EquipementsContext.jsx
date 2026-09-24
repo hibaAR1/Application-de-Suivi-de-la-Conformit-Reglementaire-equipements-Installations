@@ -19,6 +19,7 @@ export function EquipementsProvider({ children }) {
   const [filiales, setFiliales] = useState([]);
   const [sites, setSites] = useState([]);
   const [typesEquipement, setTypesEquipement] = useState([]);
+  const [groupesEquipement, setGroupesEquipement] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState(null);
 
@@ -33,6 +34,12 @@ export function EquipementsProvider({ children }) {
   const rafraichirTypes = useCallback(() => {
     return apiFetch("/type-equipements")
       .then(setTypesEquipement)
+      .catch((e) => setErreur(e.message));
+  }, []);
+
+  const rafraichirGroupes = useCallback(() => {
+    return apiFetch("/groupes-equipement")
+      .then(setGroupesEquipement)
       .catch((e) => setErreur(e.message));
   }, []);
 
@@ -52,17 +59,20 @@ export function EquipementsProvider({ children }) {
         setFiliales(d.filiales);
         setSites(d.sites);
         setTypesEquipement(d.typesEquipement);
+        setGroupesEquipement(d.groupesEquipement ?? []);
       })
       .catch(() =>
         // Si /donnees-initiales échoue pour une raison quelconque (route pas
         // encore prise en compte côté serveur, erreur ponctuelle...), on
-        // retombe sur les 4 anciens appels séparés plutôt que de laisser les
-        // listes déroulantes (filiales/types) vides pour toute la session.
+        // retombe sur les anciens appels séparés plutôt que de laisser les
+        // listes déroulantes (filiales/types/groupes) vides pour toute la
+        // session.
         Promise.all([
           apiFetch("/equipements").then(setEquipements),
           apiFetch("/filiales").then(setFiliales),
           apiFetch("/sites").then(setSites),
           apiFetch("/type-equipements").then(setTypesEquipement),
+          apiFetch("/groupes-equipement").then(setGroupesEquipement),
         ]),
       )
       .catch((e) => setErreur(e.message))
@@ -159,6 +169,13 @@ export function EquipementsProvider({ children }) {
     return maj;
   }
 
+  // Bouton "Supprimer" réservé au super admin dans la liste des équipements
+  // (à côté de "Ouvrir"/"Modifier").
+  async function supprimerEquipement(id) {
+    await apiFetch(`/equipements/${id}`, { method: "DELETE" });
+    setEquipements((prev) => prev.filter((e) => e.id_equipement !== id));
+  }
+
   async function creerTypeEquipement({
     libelle,
     categorie,
@@ -176,6 +193,61 @@ export function EquipementsProvider({ children }) {
     });
     setTypesEquipement((prev) => [...prev, type]);
     return type;
+  }
+
+  // Page "Données de base > Types d'équipement".
+  async function modifierTypeEquipement(
+    id,
+    { libelle, categorie, periodiciteControle, caracteristiques },
+  ) {
+    const type = await apiFetch(`/type-equipements/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        libelle,
+        categorie,
+        periodicite_controle: periodiciteControle,
+        caracteristiques: caracteristiques ?? [],
+      }),
+    });
+    setTypesEquipement((prev) =>
+      prev.map((t) => (t.id_type_equipement === id ? type : t)),
+    );
+    return type;
+  }
+
+  async function supprimerTypeEquipement(id) {
+    await apiFetch(`/type-equipements/${id}`, { method: "DELETE" });
+    setTypesEquipement((prev) =>
+      prev.filter((t) => t.id_type_equipement !== id),
+    );
+  }
+
+  // Page "Données de base > Groupes".
+  async function creerGroupeEquipement(libelle) {
+    const groupe = await apiFetch("/groupes-equipement", {
+      method: "POST",
+      body: JSON.stringify({ libelle }),
+    });
+    setGroupesEquipement((prev) => [...prev, groupe]);
+    return groupe;
+  }
+
+  async function modifierGroupeEquipement(id, libelle) {
+    const groupe = await apiFetch(`/groupes-equipement/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ libelle }),
+    });
+    setGroupesEquipement((prev) =>
+      prev.map((g) => (g.id_groupe_equipement === id ? groupe : g)),
+    );
+    return groupe;
+  }
+
+  async function supprimerGroupeEquipement(id) {
+    await apiFetch(`/groupes-equipement/${id}`, { method: "DELETE" });
+    setGroupesEquipement((prev) =>
+      prev.filter((g) => g.id_groupe_equipement !== id),
+    );
   }
 
   function recupererRapports(idEquipement) {
@@ -213,18 +285,26 @@ export function EquipementsProvider({ children }) {
     sites,
     sitesDeFiliale,
     typesEquipement,
+    groupesEquipement,
     chargement,
     erreur,
     getByRef,
     creerEquipement,
     modifierEquipement,
     modifierDetailsEquipement,
+    supprimerEquipement,
     creerTypeEquipement,
+    modifierTypeEquipement,
+    supprimerTypeEquipement,
+    creerGroupeEquipement,
+    modifierGroupeEquipement,
+    supprimerGroupeEquipement,
     recupererRapports,
     ajouterRapport,
     genererAssistant,
     rafraichirEquipements,
     rafraichirTypes,
+    rafraichirGroupes,
   };
 
   return (

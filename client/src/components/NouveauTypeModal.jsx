@@ -29,12 +29,28 @@ const cardStyle = {
 // les champs de l'onglet "Caractéristiques" de la fiche équipement.
 // Le champ "Groupe" (Fixe/Mobile) a été retiré de cette popup : le type est
 // créé avec le groupe "Fixe" par défaut, modifiable ensuite si besoin.
-export default function NouveauTypeModal({ onClose, onCree }) {
-  const { creerTypeEquipement } = useEquipements();
-  const [libelle, setLibelle] = useState("");
-  const [categorie] = useState("Fixe");
-  const [periodicite, setPeriodicite] = useState("");
-  const [caracteristiques, setCaracteristiques] = useState([""]);
+//
+// `typeExistant` (optionnel) : passe la popup en mode modification (page
+// "Données de base > Types d'équipement") — pré-remplit les champs et
+// appelle modifierTypeEquipement() au lieu de creerTypeEquipement().
+export default function NouveauTypeModal({ onClose, onCree, typeExistant }) {
+  const { creerTypeEquipement, modifierTypeEquipement } = useEquipements();
+  const modeEdition = Boolean(typeExistant);
+  const [libelle, setLibelle] = useState(typeExistant?.libelle ?? "");
+  // Pas de sélecteur ici (retiré exprès) : à la création on fige "Fixe", mais
+  // en modification on garde la catégorie déjà enregistrée pour ne pas
+  // l'écraser silencieusement.
+  const [categorie] = useState(typeExistant?.categorie ?? "Fixe");
+  const [periodicite, setPeriodicite] = useState(
+    typeExistant?.periodicite_controle
+      ? String(typeExistant.periodicite_controle)
+      : "",
+  );
+  const [caracteristiques, setCaracteristiques] = useState(
+    typeExistant?.caracteristiques_definition?.length
+      ? typeExistant.caracteristiques_definition.map((c) => c.libelle)
+      : [""],
+  );
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState("");
 
@@ -65,12 +81,15 @@ export default function NouveauTypeModal({ onClose, onCree }) {
     setEnvoi(true);
     setErreur("");
     try {
-      const type = await creerTypeEquipement({
+      const donnees = {
         libelle: libelle.trim(),
         categorie,
         periodiciteControle: Number(periodicite),
         caracteristiques: caracteristiques.filter((c) => c.trim() !== ""),
-      });
+      };
+      const type = modeEdition
+        ? await modifierTypeEquipement(typeExistant.id_type_equipement, donnees)
+        : await creerTypeEquipement(donnees);
       onCree?.(type);
       onClose();
     } catch (e2) {
@@ -91,7 +110,11 @@ export default function NouveauTypeModal({ onClose, onCree }) {
             marginBottom: 16,
           }}
         >
-          <h2 style={{ fontSize: 17 }}>Nouveau type d'équipement</h2>
+          <h2 style={{ fontSize: 17 }}>
+            {modeEdition
+              ? "Modifier le type d'équipement"
+              : "Nouveau type d'équipement"}
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -187,7 +210,11 @@ export default function NouveauTypeModal({ onClose, onCree }) {
 
           <div style={{ display: "flex", gap: 10 }}>
             <button type="submit" className="btn btn-primary" disabled={envoi}>
-              {envoi ? "Création…" : "Créer le type"}
+              {envoi
+                ? "Enregistrement…"
+                : modeEdition
+                  ? "Enregistrer"
+                  : "Créer le type"}
             </button>
             <button
               type="button"

@@ -9,6 +9,7 @@ import NouveauGroupeModal from "../components/NouveauGroupeModal";
 import { useEquipements } from "../context/EquipementsContext";
 import { useControles } from "../context/ControlesContext";
 import { useFilialeTheme } from "../context/FilialeThemeContext";
+import { useAuth } from "../context/AuthContext";
 import { getGroupesPersonnalises } from "../utils/groupes";
 import {
   telechargerCanevasXlsx,
@@ -122,9 +123,12 @@ export default function EquipementsListe({ categorie }) {
     sitesDeFiliale,
     creerEquipement,
     rafraichirEquipements,
+    supprimerEquipement,
   } = useEquipements();
   const { ajouterControle } = useControles();
   const { filiales, onglets, filialeActive } = useFilialeTheme();
+  const { user } = useAuth();
+  const estSuperAdmin = user?.role === "Super Admin";
   const [recherche, setRecherche] = useState("");
   const [filialeFiltre, setFilialeFiltre] = useState("");
   const [categorieFiltre, setCategorieFiltre] = useState(categorie ?? "");
@@ -139,6 +143,22 @@ export default function EquipementsListe({ categorie }) {
   const [resultatImport, setResultatImport] = useState(null);
   const inputImportRef = useRef(null);
   const navigate = useNavigate();
+
+  // Boutons "Modifier"/"Supprimer" réservés au super admin, à côté de
+  // "Ouvrir" dans la liste.
+  async function supprimer(eq) {
+    if (
+      !window.confirm(
+        `Supprimer l'équipement "${eq.id_equipement}" (${eq.designation ?? "sans désignation"}) ? Cette action est irréversible.`,
+      )
+    )
+      return;
+    try {
+      await supprimerEquipement(eq.id_equipement);
+    } catch (e) {
+      alert(e.message);
+    }
+  }
 
   // --- Canevas : classeur .xlsx vierge (juste les libellés de colonnes,
   // aucune donnée) avec de vraies listes déroulantes Excel pour Filiale/
@@ -641,6 +661,39 @@ export default function EquipementsListe({ categorie }) {
                               >
                                 <IconQr />
                               </button>
+                              {estSuperAdmin && (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    title="Modifier"
+                                    style={{ padding: "4px 8px" }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(
+                                        `/equipements/${eq.id_equipement}/modifier`,
+                                      );
+                                    }}
+                                  >
+                                    ✎
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    title="Supprimer"
+                                    style={{
+                                      padding: "4px 8px",
+                                      color: "var(--danger)",
+                                    }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      supprimer(eq);
+                                    }}
+                                  >
+                                    🗑
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>

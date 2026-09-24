@@ -4,7 +4,6 @@ import AppLayout from "./components/AppLayout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import EquipementsListe from "./pages/EquipementsListe";
-import Equipement from "./pages/Equipement";
 import EquipementForm from "./pages/EquipementForm";
 import Controles from "./pages/Controles";
 import ReserveForm from "./pages/ReserveForm";
@@ -13,6 +12,9 @@ import MobileControl from "./pages/MobileControl";
 import ScanSimule from "./pages/ScanSimule";
 import Utilisateurs from "./pages/Utilisateurs"; // AJOUTE
 import UtilisateurForm from "./pages/UtilisateurForm"; // AJOUTE
+import DonneesBase from "./pages/DonneesBase";
+import GroupesEquipementAdmin from "./pages/GroupesEquipementAdmin";
+import TypesEquipementAdmin from "./pages/TypesEquipementAdmin";
 
 function App() {
   return (
@@ -33,7 +35,6 @@ function App() {
               path="/equipements/:ref/modifier"
               element={<EquipementForm />}
             />
-            <Route path="/equipements/:ref" element={<Equipement />} />
             <Route path="/controles" element={<Controles />} />
             <Route path="/reserves/:id/lever" element={<ReserveForm />} />
             <Route path="/groupe" element={<Groupe />} />
@@ -53,6 +54,15 @@ function App() {
               element={<UtilisateurForm />}
             />{" "}
             {/* AJOUTE */}
+            <Route path="/donnees-base" element={<DonneesBase />} />
+            <Route
+              path="/donnees-base/groupes"
+              element={<GroupesEquipementAdmin />}
+            />
+            <Route
+              path="/donnees-base/types"
+              element={<TypesEquipementAdmin />}
+            />
           </Route>
         </Route>
       </Routes>

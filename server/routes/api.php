@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BootstrapController;
 use App\Http\Controllers\Api\EquipementController;
 use App\Http\Controllers\Api\FilialeController;
+use App\Http\Controllers\Api\GroupeEquipementController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\UtilisateurController;
 use App\Http\Controllers\Api\ReserveController;
@@ -41,6 +42,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/type-equipements', [TypeEquipementController::class, 'index']);
     Route::post('/type-equipements', [TypeEquipementController::class, 'store']);
+    Route::put('/type-equipements/{id}', [TypeEquipementController::class, 'update']);
+    Route::delete('/type-equipements/{id}', [TypeEquipementController::class, 'destroy']);
+
+    // Page "Données de base > Groupes" (Administration)
+    Route::apiResource('groupes-equipement', GroupeEquipementController::class)
+        ->only(['index', 'store', 'update', 'destroy']);
 
     Route::get('/equipements/{id}/rapports', [RapportController::class, 'index']);
     Route::post('/equipements/{id}/rapports', [RapportController::class, 'store']);
