@@ -3,16 +3,17 @@
 namespace App\Modules\Role;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Role\Resources\RoleResource;
 
 class RoleController extends Controller
 {
     public function index()
     {
-        return Role::all();
+        return RoleResource::collection(Role::all());
     }
 
     public function show($id)
     {
-        return Role::findOrFail($id);
+        return new RoleResource(Role::findOrFail($id));
     }
 }

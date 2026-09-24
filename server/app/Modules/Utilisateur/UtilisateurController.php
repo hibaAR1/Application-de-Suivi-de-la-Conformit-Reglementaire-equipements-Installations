@@ -5,18 +5,19 @@ namespace App\Modules\Utilisateur;
 use App\Http\Controllers\Controller;
 use App\Modules\Utilisateur\Requests\StoreUtilisateurRequest;
 use App\Modules\Utilisateur\Requests\UpdateUtilisateurRequest;
+use App\Modules\Utilisateur\Resources\UtilisateurResource;
 use Illuminate\Support\Facades\Hash;
 
 class UtilisateurController extends Controller
 {
     public function index()
     {
-        return Utilisateur::with(['role', 'filiales'])->get();
+        return UtilisateurResource::collection(Utilisateur::with(['role', 'filiales'])->get());
     }
 
     public function show($id)
     {
-        return Utilisateur::with(['role', 'filiales'])->findOrFail($id);
+        return new UtilisateurResource(Utilisateur::with(['role', 'filiales'])->findOrFail($id));
     }
 
     public function store(StoreUtilisateurRequest $request)
@@ -30,7 +31,7 @@ class UtilisateurController extends Controller
         $utilisateur = Utilisateur::create($data);
         $utilisateur->filiales()->sync($idFiliales);
 
-        return $utilisateur->load(['role', 'filiales']);
+        return new UtilisateurResource($utilisateur->load(['role', 'filiales']));
     }
 
     public function update(UpdateUtilisateurRequest $request, $id)
@@ -45,7 +46,7 @@ class UtilisateurController extends Controller
         }
 
         $utilisateur->update($data);
-        return $utilisateur->load(['role', 'filiales']);
+        return new UtilisateurResource($utilisateur->load(['role', 'filiales']));
     }
 
     public function destroy($id)

@@ -4,6 +4,7 @@ namespace App\Modules\Controle;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Controle\Requests\StoreControleRequest;
+use App\Modules\Controle\Resources\ControleResource;
 use App\Modules\Equipement\Equipement;
 use App\Modules\Reserve\Reserve;
 use Carbon\Carbon;
@@ -27,7 +28,7 @@ class ControleController extends Controller
             $query->where('id_equipement', $request->id_equipement);
         }
 
-        return $query->orderByDesc('date_controle')->get();
+        return ControleResource::collection($query->orderByDesc('date_controle')->get());
     }
 
     public function store(StoreControleRequest $request)
@@ -77,6 +78,6 @@ class ControleController extends Controller
             return $controle;
         });
 
-        return $controle->load('reserves');
+        return new ControleResource($controle->load('reserves'));
     }
 }
