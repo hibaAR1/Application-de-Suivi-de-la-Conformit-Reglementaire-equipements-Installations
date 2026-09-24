@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ajouterGroupePersonnalise } from "../utils/groupes";
+import { useEquipements } from "../context/EquipementsContext";
 
 const overlayStyle = {
   position: "fixed",
@@ -25,20 +25,35 @@ const cardStyle = {
 // Popup "+ Nouveau groupe" : juste un nom (ex: "Mixte"), en plus de Fixe/Mobile.
 // Différente de la popup "+ Nouveau type" — ici on ne crée qu'un groupe, pas un
 // type complet avec ses caractéristiques.
+//
+// Enregistre dans la vraie table groupe_equipement (même table que la page
+// "Données de base > Groupes") plutôt qu'en localStorage : un groupe créé
+// ici est donc désormais visible par tous les utilisateurs, et apparaît
+// aussi dans "Données de base > Groupes" — les deux mécanismes ne
+// faisaient pas ça avant et coexistaient sans se voir.
 export default function NouveauGroupeModal({ onClose, onCree }) {
+  const { creerGroupeEquipement } = useEquipements();
   const [nom, setNom] = useState("");
   const [erreur, setErreur] = useState("");
+  const [enCours, setEnCours] = useState(false);
 
-  function enregistrer(e) {
+  async function enregistrer(e) {
     e.preventDefault();
     const valeur = nom.trim();
     if (!valeur) {
       setErreur("Le nom du groupe est obligatoire.");
       return;
     }
-    ajouterGroupePersonnalise(valeur);
-    onCree?.(valeur);
-    onClose();
+    setEnCours(true);
+    setErreur("");
+    try {
+      const groupe = await creerGroupeEquipement(valeur);
+      onCree?.(groupe);
+      onClose();
+    } catch (err) {
+      setErreur(err.message || "Impossible de créer ce groupe.");
+      setEnCours(false);
+    }
   }
 
   return (
@@ -84,7 +99,8 @@ export default function NouveauGroupeModal({ onClose, onCree }) {
             }}
           >
             Ce groupe s'ajoutera à côté de "Fixe" et "Mobile" dans les listes
-            déroulantes.
+            déroulantes, et apparaîtra aussi dans "Données de base &gt;
+            Groupes".
           </p>
 
           {erreur && (
@@ -100,13 +116,18 @@ export default function NouveauGroupeModal({ onClose, onCree }) {
           )}
 
           <div style={{ display: "flex", gap: 10 }}>
-            <button type="submit" className="btn btn-primary">
-              Créer le groupe
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={enCours}
+            >
+              {enCours ? "Création…" : "Créer le groupe"}
             </button>
             <button
               type="button"
               className="btn btn-secondary"
               onClick={onClose}
+              disabled={enCours}
             >
               Annuler
             </button>
