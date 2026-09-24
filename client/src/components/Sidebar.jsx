@@ -91,6 +91,16 @@ export default function Sidebar() {
             <span className="nav-label">Utilisateurs</span>
           </NavLink>
         )}
+        {user?.hasPermission("utilisateurs.manage") && (
+          <NavLink
+            to="/donnees-base"
+            title="Données de base"
+            className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+          >
+            <IconBox />
+            <span className="nav-label">Données de base</span>
+          </NavLink>
+        )}
       </nav>
       <div className="user-badge">
         <div className="user-avatar">{user?.initiales ?? "?"}</div>
