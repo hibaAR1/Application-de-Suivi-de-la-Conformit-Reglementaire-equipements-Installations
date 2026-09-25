@@ -35,11 +35,11 @@ class EquipementResourceTest extends TestCase
         $this->assertSame('Conforme', $tableau['statut']);
         $this->assertSame(['poids' => '500kg'], $tableau['caracteristiques']);
 
-        // Les relations non chargées (filiale, site, typeEquipement, controles,
+        // Les relations non chargées (filiale, site, type_equipement, controles,
         // rapports) sont bien présentes dans le tableau des clés — c'est le
         // passage par jsonSerialize()/resolve() (testé côté Feature, avec une
         // vraie requête HTTP) qui les retire proprement de la réponse finale.
-        foreach (['filiale', 'site', 'typeEquipement', 'controles', 'rapports'] as $cle) {
+        foreach (['filiale', 'site', 'type_equipement', 'controles', 'rapports'] as $cle) {
             $this->assertArrayHasKey($cle, $tableau);
         }
     }

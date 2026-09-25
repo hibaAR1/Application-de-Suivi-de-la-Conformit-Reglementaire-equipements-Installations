@@ -27,6 +27,10 @@ class UtilisateurController extends Controller
         $idFiliales = $data['id_filiales'] ?? [];
         unset($data['id_filiales']);
         $data['mot_de_passe'] = Hash::make($data['mot_de_passe']);
+        // Changement de mot de passe obligatoire au premier login : tout
+        // nouvel utilisateur créé par un admin doit changer le mot de passe
+        // temporaire qu'on lui a donné, dès sa première connexion.
+        $data['doit_changer_mot_passe'] = true;
 
         $utilisateur = Utilisateur::create($data);
         $utilisateur->filiales()->sync($idFiliales);
@@ -43,6 +47,12 @@ class UtilisateurController extends Controller
         if (array_key_exists('id_filiales', $data)) {
             $utilisateur->filiales()->sync($data['id_filiales'] ?? []);
             unset($data['id_filiales']);
+        }
+
+        // Comme à la création (store()) : jamais stocker le mot de passe en
+        // clair, toujours le hacher avant d'enregistrer.
+        if (array_key_exists('mot_de_passe', $data)) {
+            $data['mot_de_passe'] = Hash::make($data['mot_de_passe']);
         }
 
         $utilisateur->update($data);

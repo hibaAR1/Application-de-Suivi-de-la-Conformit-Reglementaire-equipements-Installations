@@ -42,6 +42,26 @@ trait EquipementTestHelpers
         $this->withHeader('Authorization', "Bearer {$token}");
     }
 
+    // Connexion en tant qu'un rôle précis (par email/mot de passe), pour
+    // vérifier que l'API respecte bien les permissions de CHAQUE rôle (voir
+    // PermissionSeeder.php pour qui a quel droit, et UtilisateurSeeder.php
+    // pour les comptes de test de chaque rôle).
+    private function seConnecterCommeRole(string $email, string $motDePasse): Utilisateur
+    {
+        $utilisateur = Utilisateur::where('email', $email)->firstOrFail();
+
+        $token = $this->postJson('/api/login', [
+            'email' => $email,
+            'mot_de_passe' => $motDePasse,
+        ])->json('token');
+
+        $this->assertIsString($token, "La connexion de test ({$email}) a échoué, impossible de récupérer un token.");
+
+        $this->withHeader('Authorization', "Bearer {$token}");
+
+        return $utilisateur;
+    }
+
     private function payloadValide(array $overrides = []): array
     {
         return array_merge([
