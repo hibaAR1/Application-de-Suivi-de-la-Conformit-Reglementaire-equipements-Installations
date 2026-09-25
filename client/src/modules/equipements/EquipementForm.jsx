@@ -129,6 +129,27 @@ export default function EquipementForm() {
       e.periodicite_mois = "Champ obligatoire.";
     if (!form.id_type_equipement)
       e.id_type_equipement = "Choisissez un type d'équipement.";
+    // Les deux champs du contrôle rapide vont ensemble : si un seul des deux
+    // est rempli, l'enregistrement du contrôle serait silencieusement ignoré
+    // (voir handleSubmit) — on le signale ici clairement au lieu de laisser
+    // l'utilisateur croire que ça a marché.
+    if (
+      controleRapidePossible &&
+      form.date_dernier_controle &&
+      !form.organisme_controle.trim()
+    ) {
+      e.date_dernier_controle =
+        "Renseignez aussi l'organisme de contrôle ci-dessus pour enregistrer ce contrôle.";
+    }
+    if (
+      controleRapidePossible &&
+      !form.date_dernier_controle &&
+      form.organisme_controle.trim() &&
+      !existant?.organisme_controle
+    ) {
+      e.date_dernier_controle =
+        "Renseignez aussi la date du dernier contrôle pour enregistrer ce contrôle.";
+    }
     setErreurs(e);
     return Object.keys(e).length === 0;
   }
@@ -514,6 +535,17 @@ export default function EquipementForm() {
                     Facultatif — renseigner aussi l'organisme ci-dessus pour
                     l'enregistrer.
                   </span>
+                  {erreurs.date_dernier_controle && (
+                    <span
+                      style={{
+                        display: "block",
+                        color: "var(--danger)",
+                        fontSize: 11.5,
+                      }}
+                    >
+                      {erreurs.date_dernier_controle}
+                    </span>
+                  )}
                 </div>
                 <div className="field">
                   <label>Prochaine échéance (calculée)</label>
