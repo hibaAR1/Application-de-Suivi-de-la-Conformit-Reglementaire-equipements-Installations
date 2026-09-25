@@ -15,6 +15,7 @@
             <directory>tests/Security</directory>
         </testsuite>
     </testsuites>
+
     <source>
         <include>
             <directory>app</directory>

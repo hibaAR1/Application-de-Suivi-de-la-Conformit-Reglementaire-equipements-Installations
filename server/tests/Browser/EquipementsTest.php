@@ -102,7 +102,17 @@ class EquipementsTest extends DuskTestCase
             $browser->assertMissing('table tbody tr button[title="Modifier"]')
                 ->assertMissing('table tbody tr button[title="Supprimer"]');
 
-            // 4. Retour au Super Admin pour nettoyer : suppression de
+            // 4. Le Référent HSE filiale est le cas mélangé : il A
+            // equipements.edit MAIS PAS equipements.delete (voir
+            // PermissionSeeder.php) — c'est le seul rôle dans ce cas, donc
+            // celui où une erreur de permission a le plus de chances de se
+            // cacher.
+            $this->connecter($browser, 'hse.ctm@menara-holding.ma', 'MenaraHSE2026!');
+            $this->chercher($browser, $numeroSerie);
+            $browser->assertVisible('table tbody tr button[title="Modifier"]')
+                ->assertMissing('table tbody tr button[title="Supprimer"]');
+
+            // 5. Retour au Super Admin pour nettoyer : suppression de
             // l'équipement de test.
             $this->connecter($browser, 'admin@menara-holding.ma', 'MenaraAdmin2026!');
             $this->chercher($browser, $numeroSerie);

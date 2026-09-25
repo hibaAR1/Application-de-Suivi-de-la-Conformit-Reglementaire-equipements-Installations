@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-  const from = location.state?.from?.pathname || "/";
+  // Avant : renvoyait vers la dernière page visitée avant déconnexion
+  // (state.from), ce qui donnait l'impression que la connexion "atterrissait
+  // n'importe où" (ex: sur Utilisateurs si c'était la dernière page
+  // ouverte). Toujours vers le Tableau de bord maintenant.
 
   const [email, setEmail] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
@@ -19,7 +21,7 @@ export default function Login() {
     setChargement(true);
     try {
       await login(email, motDePasse);
-      navigate(from, { replace: true });
+      navigate("/", { replace: true });
     } catch (err) {
       setErreur(err.message || "Identifiants invalides");
     } finally {

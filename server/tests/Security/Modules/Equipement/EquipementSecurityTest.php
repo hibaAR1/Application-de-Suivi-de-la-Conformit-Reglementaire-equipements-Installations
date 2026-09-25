@@ -4,6 +4,7 @@ namespace Tests\Security\Modules\Equipement;
 
 use App\Modules\Equipement\Equipement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\Modules\Equipement\EquipementTestHelpers;
 use Tests\TestCase;
 
@@ -78,6 +79,111 @@ class EquipementSecurityTest extends TestCase
         ]));
 
         $response->assertStatus(200)->assertJsonCount(0);
+        $this->assertDatabaseHas('equipement', ['id_equipement' => 'TEST-001']);
+    }
+
+    // --- La permission equipements.edit est requise pour modifier ----------
+    // (voir PermissionSeeder.php : Super Admin et Administrateur SMI Holding
+    // ont accès total ; Référent HSE filiale peut modifier ; Technicien
+    // terrain et Consultation Direction n'ont PAS ce droit — voir aussi
+    // UtilisateurSeeder.php pour les comptes de test de chaque rôle.)
+
+    public static function rolesAvecLeDroitDeModifier(): array
+    {
+        return [
+            'Super Admin' => ['admin@menara-holding.ma', 'MenaraAdmin2026!'],
+            'Administrateur SMI Holding' => ['smi@menara-holding.ma', 'MenaraSMI2026!'],
+            'Référent HSE filiale' => ['hse.ctm@menara-holding.ma', 'MenaraHSE2026!'],
+        ];
+    }
+
+    #[DataProvider('rolesAvecLeDroitDeModifier')]
+    public function test_modifier_un_equipement_est_autorise_pour_un_role_avec_le_droit(string $email, string $motDePasse): void
+    {
+        $this->seConnecterCommeRole($email, $motDePasse);
+
+        $equipement = Equipement::create(array_merge($this->payloadValide(), [
+            'id_equipement' => 'TEST-001', 'referentiel' => 'TEST-001', 'statut' => 'Conforme',
+        ]));
+
+        $this->putJson("/api/equipements/{$equipement->id_equipement}", [
+            'designation' => 'Désignation modifiée',
+        ])->assertStatus(200);
+    }
+
+    public static function rolesSansLeDroitDeModifier(): array
+    {
+        return [
+            'Technicien terrain' => ['technicien.ctm@menara-holding.ma', 'MenaraTech2026!'],
+            'Consultation Direction' => ['direction@menara-holding.ma', 'MenaraDirection2026!'],
+        ];
+    }
+
+    #[DataProvider('rolesSansLeDroitDeModifier')]
+    public function test_modifier_un_equipement_est_refuse_pour_un_role_sans_le_droit(string $email, string $motDePasse): void
+    {
+        $this->seConnecterCommeRole($email, $motDePasse);
+
+        $equipement = Equipement::create(array_merge($this->payloadValide(), [
+            'id_equipement' => 'TEST-001', 'referentiel' => 'TEST-001', 'statut' => 'Conforme',
+        ]));
+
+        $this->putJson("/api/equipements/{$equipement->id_equipement}", [
+            'designation' => 'Désignation modifiée',
+        ])->assertStatus(403);
+
+        $this->assertDatabaseMissing('equipement', [
+            'id_equipement' => 'TEST-001', 'designation' => 'Désignation modifiée',
+        ]);
+    }
+
+    // --- La permission equipements.delete est requise pour supprimer -------
+    // (voir PermissionSeeder.php : SEULS Super Admin et Administrateur SMI
+    // Holding ont ce droit — tous les autres rôles, y compris Référent HSE
+    // filiale qui peut pourtant modifier, doivent être bloqués.)
+
+    public static function rolesAvecLeDroitDeSupprimer(): array
+    {
+        return [
+            'Super Admin' => ['admin@menara-holding.ma', 'MenaraAdmin2026!'],
+            'Administrateur SMI Holding' => ['smi@menara-holding.ma', 'MenaraSMI2026!'],
+        ];
+    }
+
+    #[DataProvider('rolesAvecLeDroitDeSupprimer')]
+    public function test_supprimer_un_equipement_est_autorise_pour_un_role_avec_le_droit(string $email, string $motDePasse): void
+    {
+        $this->seConnecterCommeRole($email, $motDePasse);
+
+        $equipement = Equipement::create(array_merge($this->payloadValide(), [
+            'id_equipement' => 'TEST-001', 'referentiel' => 'TEST-001', 'statut' => 'Conforme',
+        ]));
+
+        $this->deleteJson("/api/equipements/{$equipement->id_equipement}")->assertStatus(200);
+
+        $this->assertDatabaseMissing('equipement', ['id_equipement' => 'TEST-001']);
+    }
+
+    public static function rolesSansLeDroitDeSupprimer(): array
+    {
+        return [
+            'Référent HSE filiale' => ['hse.ctm@menara-holding.ma', 'MenaraHSE2026!'],
+            'Technicien terrain' => ['technicien.ctm@menara-holding.ma', 'MenaraTech2026!'],
+            'Consultation Direction' => ['direction@menara-holding.ma', 'MenaraDirection2026!'],
+        ];
+    }
+
+    #[DataProvider('rolesSansLeDroitDeSupprimer')]
+    public function test_supprimer_un_equipement_est_refuse_pour_un_role_sans_le_droit(string $email, string $motDePasse): void
+    {
+        $this->seConnecterCommeRole($email, $motDePasse);
+
+        $equipement = Equipement::create(array_merge($this->payloadValide(), [
+            'id_equipement' => 'TEST-001', 'referentiel' => 'TEST-001', 'statut' => 'Conforme',
+        ]));
+
+        $this->deleteJson("/api/equipements/{$equipement->id_equipement}")->assertStatus(403);
+
         $this->assertDatabaseHas('equipement', ['id_equipement' => 'TEST-001']);
     }
 }

@@ -15,8 +15,12 @@ class Utilisateur extends Model
     protected $primaryKey = 'id_utilisateur';
     public $timestamps = false;
 
-    protected $fillable = ['nom', 'email', 'mot_de_passe', 'id_filiale', 'id_role', 'actif'];
+    protected $fillable = ['nom', 'email', 'mot_de_passe', 'id_filiale', 'id_role', 'actif', 'doit_changer_mot_passe'];
     protected $hidden = ['mot_de_passe'];
+    // Sans ça, actif/doit_changer_mot_passe ressortent comme 1/0 au lieu de
+    // true/false dans le JSON (inoffensif côté React qui teste juste la
+    // "vérité" de la valeur, mais plus correct et plus sûr ainsi).
+    protected $casts = ['actif' => 'boolean', 'doit_changer_mot_passe' => 'boolean'];
 
     public function role()
     {

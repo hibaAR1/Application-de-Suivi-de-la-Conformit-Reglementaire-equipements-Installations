@@ -16,7 +16,10 @@ export default function DonneesBase() {
   const navigate = useNavigate();
   const { groupesEquipement, typesEquipement } = useEquipements();
 
-  if (!user?.hasPermission("utilisateurs.manage")) {
+  if (
+    !user?.hasPermission("utilisateurs.manage") &&
+    !user?.hasPermission("equipements.create")
+  ) {
     return (
       <div className="content">
         <Plate style={{ padding: 24 }}>

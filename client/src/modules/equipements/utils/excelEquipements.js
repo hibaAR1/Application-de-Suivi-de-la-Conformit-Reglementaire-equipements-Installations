@@ -120,7 +120,9 @@ export async function lireXlsxEquipements(fichier) {
 
   feuille.eachRow((row, numeroLigne) => {
     if (numeroLigne === 1) return; // en-tête
-    const valeurs = row.values.slice(1).map((v) => {
+    const brut = row.values.slice(1);
+    const valeurs = Array.from({ length: brut.length }, (_, i) => {
+      const v = brut[i];
       if (v === null || v === undefined) return "";
       if (v instanceof Date) return v.toISOString().slice(0, 10);
       if (typeof v === "object" && "result" in v) return String(v.result ?? "");

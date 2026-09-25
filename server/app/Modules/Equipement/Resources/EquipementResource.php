@@ -35,7 +35,7 @@ class EquipementResource extends JsonResource
             'caracteristiques' => $this->caracteristiques,
             'filiale' => FilialeResource::make($this->whenLoaded('filiale')),
             'site' => SiteResource::make($this->whenLoaded('site')),
-            'typeEquipement' => TypeEquipementResource::make($this->whenLoaded('typeEquipement')),
+            'type_equipement' => TypeEquipementResource::make($this->whenLoaded('typeEquipement')),
             'controles' => ControleResource::collection($this->whenLoaded('controles')),
             'rapports' => RapportResource::collection($this->whenLoaded('rapports')),
         ];
