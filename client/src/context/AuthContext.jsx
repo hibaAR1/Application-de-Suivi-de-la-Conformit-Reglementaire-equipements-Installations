@@ -37,6 +37,42 @@ export function AuthProvider({ children }) {
     localStorage.setItem("token", data.token);
   };
 
+  // Changement de mot de passe obligatoire au premier login (voir
+  // AuthController::changerMotDePasse côté serveur). Redemande le mot de
+  // passe actuel même dans ce cas-là (sécurité).
+  const changerMotDePasse = async (
+    motDePasseActuel,
+    nouveauMotDePasse,
+    confirmation,
+  ) => {
+    const res = await fetch("http://127.0.0.1:8000/api/changer-mot-de-passe", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        mot_de_passe_actuel: motDePasseActuel,
+        nouveau_mot_de_passe: nouveauMotDePasse,
+        nouveau_mot_de_passe_confirmation: confirmation,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      const messageDetail =
+        err.errors?.nouveau_mot_de_passe?.[0] ||
+        err.errors?.mot_de_passe_actuel?.[0] ||
+        err.message ||
+        "Erreur lors du changement de mot de passe.";
+      throw new Error(messageDetail);
+    }
+
+    const data = await res.json();
+    setUtilisateur(data.utilisateur);
+    localStorage.setItem("utilisateur", JSON.stringify(data.utilisateur));
+  };
+
   const logout = async () => {
     if (token) {
       await fetch("http://127.0.0.1:8000/api/logout", {
@@ -68,12 +104,23 @@ export function AuthProvider({ children }) {
         permissions,
         hasPermission: (code) => permissions.includes(code),
         voitToutesFiliales: permissions.includes("dashboard.groupe.view"),
+        // Vrai pour un compte tout juste créé par un admin (mot de passe
+        // temporaire) : force le passage par /changer-mot-de-passe avant
+        // d'accéder au reste de l'appli (voir ProtectedRoute.jsx).
+        doitChangerMotPasse: Boolean(utilisateur.doit_changer_mot_passe),
       }
     : null;
 
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated: !!utilisateur, user, token, login, logout }}
+      value={{
+        isAuthenticated: !!utilisateur,
+        user,
+        token,
+        login,
+        logout,
+        changerMotDePasse,
+      }}
     >
       {children}
     </AuthContext.Provider>

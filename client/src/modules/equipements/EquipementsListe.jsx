@@ -128,7 +128,7 @@ export default function EquipementsListe({ categorie }) {
   const { ajouterControle } = useControles();
   const { filiales, onglets, filialeActive } = useFilialeTheme();
   const { user } = useAuth();
-  const estSuperAdmin = user?.role === "Super Admin";
+  const estSuperAdmin = user?.hasPermission("equipements.delete");
   const [recherche, setRecherche] = useState("");
   const [filialeFiltre, setFilialeFiltre] = useState("");
   const [categorieFiltre, setCategorieFiltre] = useState(categorie ?? "");
@@ -238,10 +238,19 @@ export default function EquipementsListe({ categorie }) {
         continue;
       }
       const site = siteLibelle
-        ? sitesDeFiliale(codeFiliale).find(
+        ? sitesDeFiliale(filiale.code).find(
             (s) => s.libelle?.toLowerCase() === siteLibelle.toLowerCase(),
           )
         : null;
+      // Le site choisi dans le fichier doit appartenir à la filiale de la
+      // même ligne — sinon on ne le trouve jamais dans sitesDeFiliale() et
+      // l'équipement se créait avant sans site, sans aucun message.
+      if (siteLibelle && !site) {
+        erreurs.push(
+          `Ligne ${numeroLigne} : le site "${siteLibelle}" n'appartient pas à la filiale "${filiale.code}" (vérifie que tu as choisi le bon site pour cette filiale).`,
+        );
+        continue;
+      }
 
       const statutFinal = statut || "Conforme";
       try {
@@ -685,38 +694,44 @@ export default function EquipementsListe({ categorie }) {
                               >
                                 <IconQr />
                               </button>
+                              {/* "Modifier" : ouvert à qui a le droit equipements.edit (Super
+    Admin, Admin SMI Holding, ET Référent HSE filiale — voir
+    PermissionSeeder.php et le CDC). Avant, ce bouton était caché
+    pour tout le monde sauf Super Admin, ce qui empêchait le HSE
+    de modifier alors qu'il en a le droit. */}
+                              {user?.hasPermission("equipements.edit") && (
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary"
+                                  title="Modifier"
+                                  style={{ padding: "4px 8px" }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(
+                                      `/equipements/${eq.id_equipement}/modifier`,
+                                    );
+                                  }}
+                                >
+                                  ✎
+                                </button>
+                              )}
+                              {/* "Supprimer" : suppression définitive, réservée au Super Admin. */}
                               {estSuperAdmin && (
-                                <>
-                                  <button
-                                    type="button"
-                                    className="btn btn-secondary"
-                                    title="Modifier"
-                                    style={{ padding: "4px 8px" }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigate(
-                                        `/equipements/${eq.id_equipement}/modifier`,
-                                      );
-                                    }}
-                                  >
-                                    ✎
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="btn btn-secondary"
-                                    title="Supprimer"
-                                    style={{
-                                      padding: "4px 8px",
-                                      color: "var(--danger)",
-                                    }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      supprimer(eq);
-                                    }}
-                                  >
-                                    🗑
-                                  </button>
-                                </>
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary"
+                                  title="Supprimer"
+                                  style={{
+                                    padding: "4px 8px",
+                                    color: "var(--danger)",
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    supprimer(eq);
+                                  }}
+                                >
+                                  🗑
+                                </button>
                               )}
                             </div>
                           </td>

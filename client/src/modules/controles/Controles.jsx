@@ -33,7 +33,7 @@ export default function Controles() {
     () =>
       filtre === "tous"
         ? controles
-        : controles.filter((c) => c.resultat_global === filtre),
+        : controles.filter((c) => c.resultat === filtre),
     [controles, filtre],
   );
 
@@ -97,49 +97,45 @@ export default function Controles() {
                   </thead>
                   <tbody>
                     {controlesFiltres.map((c) => {
-                      const eq = getByRef(c.id_equipement);
-                      const reserve = (c.reserves ?? [])[0];
+                      const eq = getByRef(c.equipementRef);
+                      const reserve = c.reserve;
                       return (
                         <tr
-                          key={c.id_controle}
+                          key={c.id}
                           className="rowlink"
-                          onClick={() => setFichierOuvert(c.id_equipement)}
+                          onClick={() => setFichierOuvert(c.equipementRef)}
                         >
                           <td>
                             <div style={{ fontWeight: 600 }}>
-                              {eq?.designation ?? c.id_equipement}
+                              {eq?.designation ?? c.equipementRef}
                             </div>
-                            <div className="ref">{c.id_equipement}</div>
+                            <div className="ref">{c.equipementRef}</div>
                           </td>
-                          <td className="mono">{c.date_controle}</td>
+                          <td className="mono">{c.dateControle}</td>
                           <td style={{ color: "var(--text-muted)" }}>
-                            {c.organisme_controle}
+                            {c.organisme}
                           </td>
                           <td>
                             <Badge
                               tone={
-                                c.resultat_global === "Favorable"
+                                c.resultat === "Favorable"
                                   ? "success"
-                                  : c.resultat_global === "Défavorable"
+                                  : c.resultat === "Défavorable"
                                     ? "danger"
                                     : "warning"
                               }
                             >
-                              {c.resultat_global}
+                              {c.resultat}
                             </Badge>
                           </td>
                           <td style={{ maxWidth: 220 }}>
                             {reserve ? (
                               <>
                                 <div style={{ fontSize: 13 }}>
-                                  {reserve.nature_reserve}
+                                  {reserve.nature}
                                 </div>
-                                <Badge
-                                  tone={
-                                    CRITICITE_TONE[reserve.niveau_criticite]
-                                  }
-                                >
-                                  {reserve.niveau_criticite}
+                                <Badge tone={CRITICITE_TONE[reserve.criticite]}>
+                                  {reserve.criticite}
                                 </Badge>
                               </>
                             ) : (
@@ -164,7 +160,7 @@ export default function Controles() {
                                     marginTop: 4,
                                   }}
                                 >
-                                  délai {reserve.delai_levee}
+                                  délai {reserve.delaiLevee}
                                 </div>
                               </>
                             ) : (

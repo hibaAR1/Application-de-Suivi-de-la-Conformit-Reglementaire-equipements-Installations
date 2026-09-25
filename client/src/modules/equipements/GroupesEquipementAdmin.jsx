@@ -137,7 +137,10 @@ export default function GroupesEquipementAdmin() {
   const [groupeEdite, setGroupeEdite] = useState(null);
   const [erreur, setErreur] = useState("");
 
-  if (!user?.hasPermission("utilisateurs.manage")) {
+  if (
+    !user?.hasPermission("utilisateurs.manage") &&
+    !user?.hasPermission("equipements.create")
+  ) {
     return (
       <div className="content">
         <Plate style={{ padding: 24 }}>

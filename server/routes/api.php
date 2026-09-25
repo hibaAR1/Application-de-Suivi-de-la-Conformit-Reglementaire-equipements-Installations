@@ -21,36 +21,61 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/changer-mot-de-passe', [AuthController::class, 'changerMotDePasse']);
 
-    // Un seul aller-retour pour toutes les données de démarrage (voir
-    // BootstrapController) au lieu de 4 requêtes séparées lancées en même
-    // temps par le client — ça évitait qu'elles s'empilent sur le serveur
-    // de dev et faisait tomber le chargement initial de 5-7s à ~1s.
     Route::get('/donnees-initiales', [BootstrapController::class, 'index']);
 
-    Route::apiResource('equipements', EquipementController::class);
-    Route::apiResource('filiales', FilialeController::class);
-    Route::apiResource('roles', RoleController::class);
-    Route::apiResource('utilisateurs', UtilisateurController::class);
-    Route::apiResource('reserves', ReserveController::class);
+    // Chaque ->middlewareFor(...) ci-dessous vérifie CÔTÉ SERVEUR la
+    // permission exacte, en plus du masquage déjà fait côté écran (voir
+    // Sidebar.jsx / EquipementsListe.jsx / hasPermission(...)) — un appel
+    // direct à l'API sans passer par un bouton est maintenant bloqué aussi.
+    Route::apiResource('equipements', EquipementController::class)
+        ->middlewareFor(['index', 'show'], 'permission:equipements.view')
+        ->middlewareFor('store', 'permission:equipements.create')
+        ->middlewareFor('update', 'permission:equipements.edit')
+        ->middlewareFor('destroy', 'permission:equipements.delete');
 
-    Route::apiResource('controles', ControleController::class)->only(['index', 'show', 'store']);
-    Route::apiResource('permissions', PermissionController::class)->only(['index']);
+    Route::apiResource('filiales', FilialeController::class);
+
+    // Gestion des rôles/permissions : réservée aux mêmes comptes que la
+    // page Utilisateurs (voir RolesAdmin.jsx / Utilisateurs.jsx).
+    Route::apiResource('roles', RoleController::class)
+        ->middleware('permission:utilisateurs.manage');
+    Route::apiResource('utilisateurs', UtilisateurController::class)
+        ->middleware('permission:utilisateurs.manage');
+
+    Route::apiResource('reserves', ReserveController::class)
+        ->only(['index', 'show', 'store', 'update'])
+        ->middlewareFor(['store', 'update'], 'permission:reserves.lever');
+
+    Route::apiResource('controles', ControleController::class)
+        ->only(['index', 'show', 'store'])
+        ->middlewareFor('store', 'permission:controles.create');
+
+    Route::apiResource('permissions', PermissionController::class)
+        ->only(['index', 'store'])
+        ->middleware('permission:utilisateurs.manage');
 
     Route::get('/sites', [SiteController::class, 'index']);
-    Route::post('/sites', [SiteController::class, 'store']);
+    Route::post('/sites', [SiteController::class, 'store'])
+        ->middleware('permission:equipements.create');
 
     Route::get('/type-equipements', [TypeEquipementController::class, 'index']);
-    Route::post('/type-equipements', [TypeEquipementController::class, 'store']);
-    Route::put('/type-equipements/{id}', [TypeEquipementController::class, 'update']);
-    Route::delete('/type-equipements/{id}', [TypeEquipementController::class, 'destroy']);
+    Route::post('/type-equipements', [TypeEquipementController::class, 'store'])
+        ->middleware('permission:utilisateurs.manage|equipements.create');
+    Route::put('/type-equipements/{id}', [TypeEquipementController::class, 'update'])
+        ->middleware('permission:utilisateurs.manage|equipements.create');
+    Route::delete('/type-equipements/{id}', [TypeEquipementController::class, 'destroy'])
+        ->middleware('permission:utilisateurs.manage|equipements.create');
 
     // Page "Données de base > Groupes" (Administration)
     Route::apiResource('groupes-equipement', GroupeEquipementController::class)
-        ->only(['index', 'store', 'update', 'destroy']);
+        ->only(['index', 'store', 'update', 'destroy'])
+        ->middlewareFor(['store', 'update', 'destroy'], 'permission:utilisateurs.manage|equipements.create');
 
     Route::get('/equipements/{id}/rapports', [RapportController::class, 'index']);
-    Route::post('/equipements/{id}/rapports', [RapportController::class, 'store']);
+    Route::post('/equipements/{id}/rapports', [RapportController::class, 'store'])
+        ->middleware('permission:equipements.edit');
 
     Route::post('/equipements/{id}/assistant/plan-action', [AssistantController::class, 'planAction']);
     Route::post('/equipements/{id}/assistant/points-controle', [AssistantController::class, 'pointsControle']);

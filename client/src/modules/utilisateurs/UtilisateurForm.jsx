@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Plate from "../../components/Plate";
 import { apiFetch } from "../../utils/api";
+import RoleModal from "../roles/RoleModal";
 
 export default function UtilisateurForm() {
   const { id } = useParams(); // absent = création, présent = modification
@@ -9,6 +10,10 @@ export default function UtilisateurForm() {
   const estModification = !!id;
 
   const [roles, setRoles] = useState([]);
+  // Chargée uniquement pour pouvoir ouvrir RoleModal depuis le bouton "+"
+  // à côté du champ Rôle ci-dessous (voir plus bas).
+  const [permissions, setPermissions] = useState([]);
+  const [modalRoleOuverte, setModalRoleOuverte] = useState(false);
   const [filiales, setFiliales] = useState([]);
   const [form, setForm] = useState({
     nom: "",
@@ -21,9 +26,16 @@ export default function UtilisateurForm() {
   const [erreur, setErreur] = useState(null);
   const [envoi, setEnvoi] = useState(false);
 
-  useEffect(() => {
+  function chargerRoles() {
     apiFetch("/roles")
       .then(setRoles)
+      .catch(() => {});
+  }
+
+  useEffect(() => {
+    chargerRoles();
+    apiFetch("/permissions")
+      .then(setPermissions)
       .catch(() => {});
     apiFetch("/filiales")
       .then(setFiliales)
@@ -158,18 +170,34 @@ export default function UtilisateurForm() {
 
             <div className="field">
               <label>Rôle</label>
-              <select
-                required
-                value={form.id_role}
-                onChange={(e) => champ("id_role", e.target.value)}
-              >
-                <option value="">— Choisir —</option>
-                {roles.map((r) => (
-                  <option key={r.id_role} value={r.id_role}>
-                    {r.libelle}
-                  </option>
-                ))}
-              </select>
+              <div style={{ display: "flex", gap: 8 }}>
+                <select
+                  required
+                  value={form.id_role}
+                  onChange={(e) => champ("id_role", e.target.value)}
+                  style={{ flex: 1 }}
+                >
+                  <option value="">— Choisir —</option>
+                  {roles.map((r) => (
+                    <option key={r.id_role} value={r.id_role}>
+                      {r.libelle}
+                    </option>
+                  ))}
+                </select>
+                {/* Ouvre la gestion des rôles (créer un rôle + cocher ses
+                    permissions par module) sans quitter ce formulaire — le
+                    rôle créé est automatiquement rechargé dans la liste
+                    ci-dessus après enregistrement. */}
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  title="Créer un nouveau rôle"
+                  onClick={() => setModalRoleOuverte(true)}
+                  style={{ padding: "0 14px" }}
+                >
+                  +
+                </button>
+              </div>
             </div>
 
             <div className="field">
@@ -242,6 +270,17 @@ export default function UtilisateurForm() {
           </form>
         </Plate>
       </div>
+
+      {modalRoleOuverte && (
+        <RoleModal
+          permissionsToutes={permissions}
+          onClose={() => setModalRoleOuverte(false)}
+          onEnregistre={(nouveauRole) => {
+            chargerRoles();
+            champ("id_role", nouveauRole.id_role);
+          }}
+        />
+      )}
     </>
   );
 }

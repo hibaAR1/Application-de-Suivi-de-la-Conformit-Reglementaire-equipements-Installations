@@ -16,9 +16,6 @@ import {
 
 const NAV_ITEMS = [
   { to: "/", label: "Tableau de bord", icon: IconGrid, end: true },
-  // Anciennement "/equipements/fixes" avec un filtre "Fixe" forcé par défaut
-  // (et le libellé "Équipements fixes") : renvoie maintenant vers la liste
-  // complète, sans présélection de groupe.
   { to: "/equipements", label: "Équipements", icon: IconBox },
   { to: "/controles", label: "Contrôles & réserves", icon: IconClipboard },
 ];
@@ -28,12 +25,9 @@ export default function Sidebar() {
   const { filialeActive, setFilialeActive, nom, filiales, onglets } =
     useFilialeTheme();
   const location = useLocation();
-  const roleLabel = user ? `${user.role} · ${user.filialeLibelle}` : "";
+  const roleLabel = user ? user.role : "";
   const logo = LOGOS_FILIALE[filialeActive] ?? LOGOS_FILIALE.GROUPE;
 
-  // "Données de base" : section repliable dans la sidebar (comme dans
-  // l'exemple donné), pas une page à part avec des cartes — on reste ouvert
-  // automatiquement si on est déjà sur une de ses sous-pages.
   const [donneesBaseOuvert, setDonneesBaseOuvert] = useState(
     location.pathname.startsWith("/donnees-base"),
   );
@@ -43,8 +37,6 @@ export default function Sidebar() {
     }
   }, [location.pathname]);
 
-  // Bouton "Scanner QR Code", juste sous le sélecteur de filiale (voir
-  // capture d'écran fournie) : ouvre ScannerEquipementModal.
   const [scanOuvert, setScanOuvert] = useState(false);
 
   return (
@@ -76,25 +68,29 @@ export default function Sidebar() {
         </select>
       )}
 
-      <button
-        type="button"
-        onClick={() => setScanOuvert(true)}
-        className="nav-item"
-        style={{
-          cursor: "pointer",
-          fontFamily: "inherit",
-          width: "100%",
-          margin: "0 0 6px",
-          border: "1px dashed rgba(212,175,55,0.4)",
-          borderRadius: 8,
-        }}
-        title="Scanner un équipement"
-      >
-        <IconQr />
-        <span className="nav-label">Scanner QR Code</span>
-      </button>
-      {scanOuvert && (
-        <ScannerEquipementModal onClose={() => setScanOuvert(false)} />
+      {user?.hasPermission("equipements.scanner") && (
+        <>
+          <button
+            type="button"
+            onClick={() => setScanOuvert(true)}
+            className="nav-item"
+            style={{
+              cursor: "pointer",
+              fontFamily: "inherit",
+              width: "100%",
+              margin: "0 0 6px",
+              border: "1px dashed rgba(212,175,55,0.4)",
+              borderRadius: 8,
+            }}
+            title="Scanner un équipement"
+          >
+            <IconQr />
+            <span className="nav-label">Scanner QR Code</span>
+          </button>
+          {scanOuvert && (
+            <ScannerEquipementModal onClose={() => setScanOuvert(false)} />
+          )}
+        </>
       )}
 
       <nav>
@@ -137,6 +133,17 @@ export default function Sidebar() {
           </NavLink>
         )}
         {user?.hasPermission("utilisateurs.manage") && (
+          <NavLink
+            to="/roles"
+            title="Rôles & Permissions"
+            className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+          >
+            <IconUsers />
+            <span className="nav-label">Rôles & Permissions</span>
+          </NavLink>
+        )}
+        {(user?.hasPermission("utilisateurs.manage") ||
+          user?.hasPermission("equipements.create")) && (
           <>
             <button
               type="button"

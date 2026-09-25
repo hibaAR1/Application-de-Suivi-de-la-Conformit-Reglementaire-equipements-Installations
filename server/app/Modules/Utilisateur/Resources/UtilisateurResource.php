@@ -20,6 +20,7 @@ class UtilisateurResource extends JsonResource
             'id_filiale' => $this->id_filiale,
             'id_role' => $this->id_role,
             'actif' => $this->actif,
+            'doit_changer_mot_passe' => $this->doit_changer_mot_passe,
             'role' => RoleResource::make($this->whenLoaded('role')),
             'filiale' => FilialeResource::make($this->whenLoaded('filiale')),
             'filiales' => FilialeResource::collection($this->whenLoaded('filiales')),
