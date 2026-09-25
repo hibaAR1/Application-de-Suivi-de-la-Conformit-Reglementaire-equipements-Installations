@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Plate from "../../components/Plate";
 import NouveauTypeModal from "./NouveauTypeModal";
@@ -8,6 +8,7 @@ import {
 } from "../../context/EquipementsContext";
 import { useControles } from "../../context/ControlesContext";
 import { useFilialeTheme } from "../../context/FilialeThemeContext";
+import { useAuth } from "../../context/AuthContext";
 
 // Un dernier contrôle ne peut être créé automatiquement ici que pour ces deux
 // statuts (correspondance directe avec le résultat du contrôle) — "Conforme
@@ -40,6 +41,13 @@ export default function EquipementForm() {
   } = useEquipements();
   const { ajouterControle } = useControles();
   const { filialeActive } = useFilialeTheme();
+  const { user } = useAuth();
+  // Un utilisateur rattaché à une (ou plusieurs) filiale(s) précise(s) — HSE,
+  // Technicien terrain — ne doit pas pouvoir créer un équipement pour une
+  // AUTRE filiale que la sienne : le champ est verrouillé sur sa filiale.
+  // Seuls Super Admin / Administrateur SMI Holding (voitToutesFiliales)
+  // peuvent choisir librement.
+  const filialeVerrouillee = !user?.voitToutesFiliales;
   const existant = ref ? getByRef(ref) : null;
   const dernierControleExistant = existant?.controles?.length
     ? [...existant.controles].sort(
@@ -111,14 +119,60 @@ export default function EquipementForm() {
     setForm((f) => ({ ...f, codeFiliale, id_site: "" }));
   }
 
+  // Filet de sécurité : si la page se charge avant que "filiales" soit
+  // arrivé du serveur, la valeur par défaut ci-dessus (filiales[0]?.code)
+  // est encore vide au moment du useState() initial. Le <select> ci-dessous
+  // AFFICHE quand même la première filiale (comportement natif du
+  // navigateur quand aucune <option> ne correspond à une valeur vide), mais
+  // l'état React, lui, reste vide — et comme rien ne le distingue à l'écran,
+  // si personne ne re-clique sur le champ, la création échoue avec "le
+  // champ filiale est obligatoire" sans cause visible. Dès que la liste
+  // arrive, on resynchronise l'état avec ce qui est réellement affiché.
+  useEffect(() => {
+    if (!existant && !form.codeFiliale && filiales.length > 0) {
+      setFiliale(
+        filialeActive && filialeActive !== "GROUPE"
+          ? filialeActive
+          : filiales[0].code,
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filiales]);
+
+  // Choix d'un type dans le <select> : pré-remplit aussi la périodicité de
+  // contrôle avec celle du type (ou 12 par défaut si le type n'en a pas
+  // encore) — l'utilisateur peut ensuite la modifier librement, ce n'est
+  // qu'un point de départ. Ne s'exécute que sur un vrai choix de
+  // l'utilisateur (jamais au chargement initial d'une modification), donc
+  // ça n'écrase jamais une périodicité déjà enregistrée sur un équipement
+  // existant.
+  function choisirType(idType) {
+    const type = typesEquipement.find(
+      (t) => t.id_type_equipement === Number(idType),
+    );
+    setForm((f) => ({
+      ...f,
+      id_type_equipement: idType,
+      periodicite_mois: type?.periodicite_controle ?? 12,
+    }));
+  }
+
   // Appelé quand la popup "+ Nouveau type" a créé le type : on le sélectionne
-  // directement dans le <select> Type de ce formulaire.
+  // directement dans le <select> Type de ce formulaire (même pré-remplissage
+  // de la périodicité que choisirType, mais à partir de l'objet fraîchement
+  // créé plutôt que de la liste, pour éviter un décalage si la liste n'a pas
+  // encore fini de se recharger).
   function surNouveauType(type) {
-    setChamp("id_type_equipement", type.id_type_equipement);
+    setForm((f) => ({
+      ...f,
+      id_type_equipement: type.id_type_equipement,
+      periodicite_mois: type.periodicite_controle ?? 12,
+    }));
   }
 
   function valider() {
     const e = {};
+    if (!form.codeFiliale) e.codeFiliale = "Choisissez une filiale.";
     if (!form.designation.trim()) e.designation = "Champ obligatoire.";
     if (form.designation.length > 100)
       e.designation = "100 caractères maximum.";
@@ -235,7 +289,7 @@ export default function EquipementForm() {
                   id="filiale"
                   value={form.codeFiliale}
                   onChange={(e) => setFiliale(e.target.value)}
-                  disabled={!!existant}
+                  disabled={!!existant || filialeVerrouillee}
                 >
                   {filiales.map((f) => (
                     <option key={f.code} value={f.code}>
@@ -243,6 +297,11 @@ export default function EquipementForm() {
                     </option>
                   ))}
                 </select>
+                {erreurs.codeFiliale && (
+                  <span style={{ color: "var(--danger)", fontSize: 11.5 }}>
+                    {erreurs.codeFiliale}
+                  </span>
+                )}
               </div>
               <div className="field">
                 <label htmlFor="site">Site</label>
@@ -271,9 +330,7 @@ export default function EquipementForm() {
                   id="type"
                   style={{ flex: 1 }}
                   value={form.id_type_equipement}
-                  onChange={(e) =>
-                    setChamp("id_type_equipement", e.target.value)
-                  }
+                  onChange={(e) => choisirType(e.target.value)}
                 >
                   <option value="">—</option>
                   {typesEquipement.map((t) => (

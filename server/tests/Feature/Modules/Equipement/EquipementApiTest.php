@@ -44,8 +44,8 @@ class EquipementApiTest extends TestCase
             ->assertJsonPath('0.id_equipement', 'TEST-001')
             ->assertJsonPath('0.filiale.code', 'CTM')
             ->assertJsonPath('0.site.code', '201')
-            ->assertJsonPath('0.typeEquipement.libelle', 'Chariot Élévateur')
-            ->assertJsonStructure([['id_equipement', 'controles', 'filiale', 'site', 'typeEquipement']]);
+            ->assertJsonPath('0.type_equipement.libelle', 'Chariot Élévateur')
+            ->assertJsonStructure([['id_equipement', 'controles', 'filiale', 'site', 'type_equipement']]);
     }
 
     public function test_la_liste_peut_etre_filtree_par_filiale(): void
