@@ -2,13 +2,11 @@
 
 namespace Tests\Support\Modules\Auth;
 
-use App\Modules\Role\Role;
-use App\Modules\Utilisateur\Utilisateur;
+use App\Models\Role;
+use App\Models\Utilisateur;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Support\Facades\Hash;
 
-// Préparation commune aux tests fonctionnels et sécurité de Auth (voir
-// tests/Support/Modules/Role/RoleTestHelpers pour le même principe).
 trait AuthTestHelpers
 {
     protected function preparerAuthDeTest(): void
@@ -17,10 +15,10 @@ trait AuthTestHelpers
     }
 
     // Jeton pour le compte Super Admin, via le vrai flux /api/login.
-    private function jeton(string $email = 'admin@menara-holding.ma', string $motDePasse = 'MenaraAdmin2026!'): string
+    private function jeton(string $nom = 'Administrateur', string $motDePasse = 'MenaraAdmin2026!'): string
     {
         $token = $this->postJson('/api/login', [
-            'email' => $email,
+            'nom' => $nom,
             'mot_de_passe' => $motDePasse,
         ])->json('token');
 
@@ -29,14 +27,14 @@ trait AuthTestHelpers
         return $token;
     }
 
-    // Crée un compte de test dont on connaît le mot de passe en clair, pour
-    // les scénarios de changement de mot de passe.
+    // Nom rendu unique (uniqid) : certains tests créent 2 comptes de ce
+    // type dans le même test, et "nom" est maintenant unique en base.
     private function utilisateurAvecMotDePasseConnu(string $motDePasse = 'AncienMotDePasse123'): Utilisateur
     {
         $role = Role::where('libelle', 'Technicien terrain')->firstOrFail();
 
         return Utilisateur::create([
-            'nom' => 'Utilisateur Test Auth',
+            'nom' => 'Utilisateur Test Auth '.uniqid(),
             'email' => 'auth.test.'.uniqid().'@menara-holding.ma',
             'mot_de_passe' => Hash::make($motDePasse),
             'id_role' => $role->id_role,

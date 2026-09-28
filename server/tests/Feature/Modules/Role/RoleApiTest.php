@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Modules\Role;
 
-use App\Modules\Role\Role;
-use App\Modules\Utilisateur\Utilisateur;
+use App\Models\Role;
+use App\Models\Utilisateur;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\Modules\Role\RoleTestHelpers;
 use Tests\TestCase;

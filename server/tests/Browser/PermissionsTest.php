@@ -14,28 +14,32 @@ class PermissionsTest extends DuskTestCase
 {
     /**
      * @return array<string, array{0: string, 1: string, 2: bool}>
-     *   [email, mot de passe, a le droit utilisateurs.manage ?]
+     *   [nom, mot de passe, a le droit utilisateurs.manage ?]
      */
     public static function comptesEtDroits(): array
     {
         return [
-            'Super Admin (a le droit)' => ['admin@menara-holding.ma', 'MenaraAdmin2026!', true],
-            'Administrateur SMI Holding (a le droit)' => ['smi@menara-holding.ma', 'MenaraSMI2026!', true],
-            "Référent HSE filiale (n'a PAS le droit)" => ['hse.ctm@menara-holding.ma', 'MenaraHSE2026!', false],
-            "Technicien terrain (n'a PAS le droit)" => ['technicien.ctm@menara-holding.ma', 'MenaraTech2026!', false],
-            "Consultation Direction (n'a PAS le droit)" => ['direction@menara-holding.ma', 'MenaraDirection2026!', false],
+            'Super Admin (a le droit)' => ['Administrateur', 'MenaraAdmin2026!', true],
+            'Administrateur SMI Holding (a le droit)' => ['Responsable SMI', 'MenaraSMI2026!', true],
+            "Référent HSE filiale (n'a PAS le droit)" => ['Référent HSE', 'MenaraHSE2026!', false],
+            "Technicien terrain (n'a PAS le droit)" => ['Technicien Terrain', 'MenaraTech2026!', false],
+            "Consultation Direction (n'a PAS le droit)" => ['Direction Générale', 'MenaraDirection2026!', false],
         ];
     }
 
     public function test_acces_utilisateurs_et_roles_selon_la_permission(): void
     {
-        foreach (self::comptesEtDroits() as [$email, $motDePasse, $autorise]) {
-            $this->browse(function (Browser $browser) use ($email, $motDePasse, $autorise) {
+        foreach (self::comptesEtDroits() as [$nom, $motDePasse, $autorise]) {
+            $this->browse(function (Browser $browser) use ($nom, $motDePasse, $autorise) {
                 $browser->visit('/login')
-                    ->type('.login-label:nth-child(1) input', $email)
+                    ->type('.login-label:nth-child(1) input', $nom)
                     ->type('.login-label:nth-child(2) input', $motDePasse)
                     ->press('Se connecter')
-                    ->waitUntilMissing('.login-page', 10);
+                    // Délai généreux (20s) : ce test se connecte 5 fois de
+                    // suite (un compte par rôle) dans la même méthode, et
+                    // plusieurs tests Dusk qui tournent à la suite peuvent
+                    // ralentir la machine.
+                    ->waitUntilMissing('.login-page', 20);
 
                 if ($autorise) {
                     $browser->assertSeeLink('Utilisateurs')

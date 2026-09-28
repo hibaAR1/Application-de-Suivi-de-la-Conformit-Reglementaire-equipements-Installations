@@ -2,10 +2,10 @@
 
 namespace Tests\Browser;
 
-use App\Modules\Equipement\Equipement;
-use App\Modules\Filiale\Filiale;
-use App\Modules\Site\Site;
-use App\Modules\TypeEquipement\TypeEquipement;
+use App\Models\Equipement;
+use App\Models\Filiale;
+use App\Models\Site;
+use App\Models\TypeEquipement;
 use Laravel\Dusk\Browser;
 use Tests\DuskTestCase;
 
@@ -23,24 +23,24 @@ use Tests\DuskTestCase;
 // Contrôles & Réserves et sera testé séparément.
 class ScanTest extends DuskTestCase
 {
-    private function connecter(Browser $browser, string $email, string $motDePasse): void
+    private function connecter(Browser $browser, string $nom, string $motDePasse): void
     {
         $browser->visit('/login')
-            ->type('.login-label:nth-child(1) input', $email)
+            ->type('.login-label:nth-child(1) input', $nom)
             ->type('.login-label:nth-child(2) input', $motDePasse)
             ->press('Se connecter')
             ->waitUntilMissing('.login-page', 20);
     }
 
     /**
-     * @return array<string, array{0: string, 1: string}>  [email, mot de passe]
+     * @return array<string, array{0: string, 1: string}>  [nom, mot de passe]
      */
     public static function comptesAutorises(): array
     {
         return [
-            'Super Admin' => ['admin@menara-holding.ma', 'MenaraAdmin2026!'],
-            'Administrateur SMI Holding' => ['smi@menara-holding.ma', 'MenaraSMI2026!'],
-            'Technicien terrain' => ['technicien.ctm@menara-holding.ma', 'MenaraTech2026!'],
+            'Super Admin' => ['Administrateur', 'MenaraAdmin2026!'],
+            'Administrateur SMI Holding' => ['Responsable SMI', 'MenaraSMI2026!'],
+            'Technicien terrain' => ['Technicien Terrain', 'MenaraTech2026!'],
         ];
     }
 
@@ -49,9 +49,9 @@ class ScanTest extends DuskTestCase
     // PermissionSeeder.php).
     public function test_acces_autorise_au_scan(): void
     {
-        foreach (self::comptesAutorises() as [$email, $motDePasse]) {
-            $this->browse(function (Browser $browser) use ($email, $motDePasse) {
-                $this->connecter($browser, $email, $motDePasse);
+        foreach (self::comptesAutorises() as [$nom, $motDePasse]) {
+            $this->browse(function (Browser $browser) use ($nom, $motDePasse) {
+                $this->connecter($browser, $nom, $motDePasse);
 
                 $browser->assertVisible('button[title="Scanner un équipement"]')
                     ->visit('/scan')
@@ -69,7 +69,7 @@ class ScanTest extends DuskTestCase
     public function test_acces_refuse_au_scan_pour_referent_hse_filiale(): void
     {
         $this->browse(function (Browser $browser) {
-            $this->connecter($browser, 'hse.ctm@menara-holding.ma', 'MenaraHSE2026!');
+            $this->connecter($browser, 'Référent HSE', 'MenaraHSE2026!');
 
             $browser->assertMissing('button[title="Scanner un équipement"]')
                 ->visit('/scan')
@@ -82,7 +82,7 @@ class ScanTest extends DuskTestCase
     public function test_acces_refuse_au_scan_pour_consultation_direction(): void
     {
         $this->browse(function (Browser $browser) {
-            $this->connecter($browser, 'direction@menara-holding.ma', 'MenaraDirection2026!');
+            $this->connecter($browser, 'Direction Générale', 'MenaraDirection2026!');
 
             $browser->assertMissing('button[title="Scanner un équipement"]')
                 ->visit('/scan')
@@ -115,7 +115,7 @@ class ScanTest extends DuskTestCase
 
         try {
             $this->browse(function (Browser $browser) use ($equipement) {
-                $this->connecter($browser, 'technicien.ctm@menara-holding.ma', 'MenaraTech2026!');
+                $this->connecter($browser, 'Technicien Terrain', 'MenaraTech2026!');
 
                 $browser->press('Scanner QR Code')
                     ->waitFor('input[placeholder^="ex:"]', 10)

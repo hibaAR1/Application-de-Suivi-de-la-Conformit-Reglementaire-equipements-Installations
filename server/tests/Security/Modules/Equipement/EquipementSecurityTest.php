@@ -2,7 +2,7 @@
 
 namespace Tests\Security\Modules\Equipement;
 
-use App\Modules\Equipement\Equipement;
+use App\Models\Equipement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\Modules\Equipement\EquipementTestHelpers;

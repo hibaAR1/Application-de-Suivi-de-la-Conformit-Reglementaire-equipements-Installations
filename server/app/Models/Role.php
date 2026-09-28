@@ -1,0 +1,26 @@
+<?php
+
+namespace App\Models;
+
+use App\Models\Permission;
+use App\Models\Utilisateur;
+use Illuminate\Database\Eloquent\Model;
+
+class Role extends Model
+{
+    protected $table = 'role';
+    protected $primaryKey = 'id_role';
+    public $timestamps = false;
+
+    protected $fillable = ['libelle', 'description'];
+
+    public function utilisateurs()
+    {
+        return $this->hasMany(Utilisateur::class, 'id_role');
+    }
+
+    public function permissions()
+    {
+        return $this->belongsToMany(Permission::class, 'role_permission', 'id_role', 'id_permission');
+    }
+}

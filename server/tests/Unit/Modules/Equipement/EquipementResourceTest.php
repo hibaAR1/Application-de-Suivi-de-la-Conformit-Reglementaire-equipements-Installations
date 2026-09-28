@@ -2,8 +2,8 @@
 
 namespace Tests\Unit\Modules\Equipement;
 
-use App\Modules\Equipement\Equipement;
-use App\Modules\Equipement\Resources\EquipementResource;
+use App\Models\Equipement;
+use App\Http\Resources\EquipementResource;
 use Illuminate\Http\Request;
 use PHPUnit\Framework\TestCase;
 

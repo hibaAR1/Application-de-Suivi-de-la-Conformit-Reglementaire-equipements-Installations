@@ -2,45 +2,34 @@
 
 namespace Tests\Browser;
 
-use App\Modules\Utilisateur\Utilisateur;
+use App\Models\Utilisateur;
 use Laravel\Dusk\Browser;
 use Tests\DuskTestCase;
 
-// Couvre la connexion pour les 5 comptes de rôle seedés (UtilisateurSeeder),
-// l'échec de connexion, la protection des routes, et la déconnexion.
-// Les identifiants ci-dessous sont ceux créés par UtilisateurSeeder — si tu
-// les as changés, mets-les à jour ici aussi.
 class AuthentificationTest extends DuskTestCase
 {
     public static function comptesSeedes(): array
     {
         return [
-            'Super Admin' => ['admin@menara-holding.ma', 'MenaraAdmin2026!'],
-            'Administrateur SMI Holding' => ['smi@menara-holding.ma', 'MenaraSMI2026!'],
-            'Référent HSE filiale' => ['hse.ctm@menara-holding.ma', 'MenaraHSE2026!'],
-            'Technicien terrain' => ['technicien.ctm@menara-holding.ma', 'MenaraTech2026!'],
-            'Consultation Direction' => ['direction@menara-holding.ma', 'MenaraDirection2026!'],
+            'Super Admin' => ['Administrateur', 'MenaraAdmin2026!'],
+            'Administrateur SMI Holding' => ['Responsable SMI', 'MenaraSMI2026!'],
+            'Référent HSE filiale' => ['Référent HSE', 'MenaraHSE2026!'],
+            'Technicien terrain' => ['Technicien Terrain', 'MenaraTech2026!'],
+            'Consultation Direction' => ['Direction Générale', 'MenaraDirection2026!'],
         ];
     }
 
-    /**
-     * Un test par rôle : connexion réussie -> arrivée sur le tableau de
-     * bord, avec le bon libellé de rôle affiché dans la barre latérale.
-     */
     public function test_connexion_reussie_pour_chaque_role(): void
     {
-        foreach (self::comptesSeedes() as $role => [$email, $motDePasse]) {
-            $this->browse(function (Browser $browser) use ($role, $email, $motDePasse) {
+        foreach (self::comptesSeedes() as $role => [$nom, $motDePasse]) {
+            $this->browse(function (Browser $browser) use ($role, $nom, $motDePasse) {
                 $browser->visit('/login')
-                    ->type('.login-label:nth-child(1) input', $email)
+                    ->type('.login-label:nth-child(1) input', $nom)
                     ->type('.login-label:nth-child(2) input', $motDePasse)
                     ->press('Se connecter')
                     ->waitUntilMissing('.login-page', 10)
                     ->assertPathIsNot('/login')
                     ->assertSee($role);
-                // Pas besoin de se déconnecter explicitement : chaque appel à
-                // $this->browse() ouvre une session de navigateur neuve, donc
-                // le compte suivant repart sans rien en mémoire.
             });
         }
     }
@@ -49,7 +38,7 @@ class AuthentificationTest extends DuskTestCase
     {
         $this->browse(function (Browser $browser) {
             $browser->visit('/login')
-                ->type('.login-label:nth-child(1) input', 'admin@menara-holding.ma')
+                ->type('.login-label:nth-child(1) input', 'Administrateur')
                 ->type('.login-label:nth-child(2) input', 'CeMotDePasseEstFaux')
                 ->press('Se connecter')
                 ->waitFor('.login-error', 10)
@@ -62,7 +51,7 @@ class AuthentificationTest extends DuskTestCase
     {
         $this->browse(function (Browser $browser) {
             $browser->visit('/login')
-                ->type('.login-label:nth-child(1) input', 'personne@menara-holding.ma')
+                ->type('.login-label:nth-child(1) input', 'Personne Inconnue')
                 ->type('.login-label:nth-child(2) input', 'PeuImporte123')
                 ->press('Se connecter')
                 ->waitFor('.login-error', 10)
@@ -84,7 +73,7 @@ class AuthentificationTest extends DuskTestCase
     {
         $this->browse(function (Browser $browser) {
             $browser->visit('/login')
-                ->type('.login-label:nth-child(1) input', 'admin@menara-holding.ma')
+                ->type('.login-label:nth-child(1) input', 'Administrateur')
                 ->type('.login-label:nth-child(2) input', 'MenaraAdmin2026!')
                 ->press('Se connecter')
                 ->waitUntilMissing('.login-page', 10)

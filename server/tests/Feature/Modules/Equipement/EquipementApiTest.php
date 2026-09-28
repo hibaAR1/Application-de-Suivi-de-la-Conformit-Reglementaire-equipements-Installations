@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\Modules\Equipement;
 
-use App\Modules\Controle\Controle;
-use App\Modules\Equipement\Equipement;
-use App\Modules\Filiale\Filiale;
+use App\Models\Controle;
+use App\Models\Equipement;
+use App\Models\Filiale;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\Modules\Equipement\EquipementTestHelpers;
 use Tests\TestCase;

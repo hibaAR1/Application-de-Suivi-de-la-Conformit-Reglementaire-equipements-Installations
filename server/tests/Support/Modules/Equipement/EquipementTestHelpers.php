@@ -2,10 +2,10 @@
 
 namespace Tests\Support\Modules\Equipement;
 
-use App\Modules\Filiale\Filiale;
-use App\Modules\Site\Site;
-use App\Modules\TypeEquipement\TypeEquipement;
-use App\Modules\Utilisateur\Utilisateur;
+use App\Models\Filiale;
+use App\Models\Site;
+use App\Models\TypeEquipement;
+use App\Models\Utilisateur;
 use Database\Seeders\DatabaseSeeder;
 
 // Préparation commune aux tests fonctionnels et sécurité d'Equipement
@@ -33,7 +33,7 @@ trait EquipementTestHelpers
     private function seConnecter(): void
     {
         $token = $this->postJson('/api/login', [
-            'email' => $this->utilisateur->email,
+            'nom' => $this->utilisateur->nom,
             'mot_de_passe' => 'MenaraAdmin2026!',
         ])->json('token');
 
@@ -51,7 +51,7 @@ trait EquipementTestHelpers
         $utilisateur = Utilisateur::where('email', $email)->firstOrFail();
 
         $token = $this->postJson('/api/login', [
-            'email' => $email,
+            'nom' => $utilisateur->nom,
             'mot_de_passe' => $motDePasse,
         ])->json('token');
 

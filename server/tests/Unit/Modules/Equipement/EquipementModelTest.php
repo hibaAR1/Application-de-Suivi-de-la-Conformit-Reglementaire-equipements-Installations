@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\Modules\Equipement;
 
-use App\Modules\Equipement\Equipement;
+use App\Models\Equipement;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Tests\TestCase;

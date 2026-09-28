@@ -10,7 +10,7 @@ export default function Login() {
   // n'importe où" (ex: sur Utilisateurs si c'était la dernière page
   // ouverte). Toujours vers le Tableau de bord maintenant.
 
-  const [email, setEmail] = useState("");
+  const [nom, setNom] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
   const [erreur, setErreur] = useState(null);
   const [chargement, setChargement] = useState(false);
@@ -20,7 +20,7 @@ export default function Login() {
     setErreur(null);
     setChargement(true);
     try {
-      await login(email, motDePasse);
+      await login(nom, motDePasse);
       navigate("/", { replace: true });
     } catch (err) {
       setErreur(err.message || "Identifiants invalides");
@@ -49,12 +49,12 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="login-form">
           <label className="login-label">
-            Email
+            Nom
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="nom@menara.ma"
+              type="text"
+              value={nom}
+              onChange={(e) => setNom(e.target.value)}
+              placeholder="Jean Dupont"
               required
               autoFocus
             />

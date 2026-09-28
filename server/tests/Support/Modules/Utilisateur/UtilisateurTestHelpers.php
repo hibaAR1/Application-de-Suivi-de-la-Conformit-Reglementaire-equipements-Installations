@@ -2,14 +2,11 @@
 
 namespace Tests\Support\Modules\Utilisateur;
 
-use App\Modules\Filiale\Filiale;
-use App\Modules\Role\Role;
-use App\Modules\Utilisateur\Utilisateur;
+use App\Models\Filiale;
+use App\Models\Role;
+use App\Models\Utilisateur;
 use Database\Seeders\DatabaseSeeder;
 
-// Préparation commune aux tests fonctionnels et sécurité de Utilisateur
-// (voir tests/Support/Modules/Role/RoleTestHelpers pour le même principe) :
-// seed, connexion via le vrai flux /api/login, payload valide.
 trait UtilisateurTestHelpers
 {
     private Utilisateur $utilisateur;
@@ -24,7 +21,7 @@ trait UtilisateurTestHelpers
     private function seConnecter(): void
     {
         $token = $this->postJson('/api/login', [
-            'email' => $this->utilisateur->email,
+            'nom' => $this->utilisateur->nom,
             'mot_de_passe' => 'MenaraAdmin2026!',
         ])->json('token');
 
@@ -40,7 +37,7 @@ trait UtilisateurTestHelpers
         $utilisateur = Utilisateur::where('email', 'technicien.ctm@menara-holding.ma')->firstOrFail();
 
         $token = $this->postJson('/api/login', [
-            'email' => $utilisateur->email,
+            'nom' => $utilisateur->nom,
             'mot_de_passe' => 'MenaraTech2026!',
         ])->json('token');
 

@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\Modules\Role;
 
-use App\Modules\Role\Role;
+use App\Models\Role;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Tests\TestCase;
