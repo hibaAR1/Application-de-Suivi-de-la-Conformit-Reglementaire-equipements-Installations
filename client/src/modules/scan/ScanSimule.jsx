@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Html5QrcodeScanner } from "html5-qrcode";
+import { useAuth } from "../../context/AuthContext";
 
 // Le QR code généré par la Fiche Technique (voir FicheTechniqueModal.jsx,
 // `valeurQr`) encode une URL complète — `${origin}/scan/{id}` — pas juste
@@ -20,12 +21,20 @@ function extraireIdentifiant(texteBrut) {
 
 export default function ScanSimule() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const conteneurId = "lecteur-qr";
   const dejaNavigue = useRef(false);
   const [etat, setEtat] = useState("attente"); // attente | actif | detecte
   const [refDetectee, setRefDetectee] = useState(null);
 
+  // Accès direct par URL (/scan, /scanner) bloqué pour qui n'a pas la
+  // permission "equipements.scanner" — même règle que le bouton de la
+  // sidebar, qui est déjà masqué dans ce cas (voir Sidebar.jsx). Avant ce
+  // correctif, rien ne bloquait l'accès direct par URL.
+  const autorise = user?.hasPermission("equipements.scanner");
+
   useEffect(() => {
+    if (!autorise) return undefined;
     const scanner = new Html5QrcodeScanner(
       conteneurId,
       { fps: 10, qrbox: 240 },
@@ -51,7 +60,38 @@ export default function ScanSimule() {
     return () => {
       scanner.clear().catch(() => {});
     };
-  }, [navigate]);
+  }, [navigate, autorise]);
+
+  if (!autorise) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#0C0B0A",
+          color: "#EFE9DF",
+          padding: "40px 20px",
+          textAlign: "center",
+        }}
+      >
+        <h2 style={{ marginBottom: 8 }}>Accès refusé</h2>
+        <p style={{ fontSize: 13, opacity: 0.7, marginBottom: 20 }}>
+          Le scan QR code n'est pas autorisé pour ton rôle.
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="btn btn-secondary"
+          style={{
+            background: "transparent",
+            borderColor: "rgba(239,233,223,0.3)",
+            color: "#EFE9DF",
+          }}
+        >
+          Retour
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div
