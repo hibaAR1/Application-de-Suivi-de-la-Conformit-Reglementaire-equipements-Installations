@@ -2,9 +2,9 @@
 
 namespace Tests\Unit\Modules\Utilisateur;
 
-use App\Modules\Permission\Permission;
-use App\Modules\Role\Role;
-use App\Modules\Utilisateur\Utilisateur;
+use App\Models\Permission;
+use App\Models\Role;
+use App\Models\Utilisateur;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Tests\TestCase;

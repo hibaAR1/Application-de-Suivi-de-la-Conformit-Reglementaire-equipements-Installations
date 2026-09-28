@@ -2,10 +2,10 @@
 
 namespace Tests\Browser;
 
-use App\Modules\Equipement\Equipement;
-use App\Modules\Filiale\Filiale;
-use App\Modules\Site\Site;
-use App\Modules\TypeEquipement\TypeEquipement;
+use App\Models\Equipement;
+use App\Models\Filiale;
+use App\Models\Site;
+use App\Models\TypeEquipement;
 use Laravel\Dusk\Browser;
 use Tests\DuskTestCase;
 use ZipArchive;
@@ -109,10 +109,10 @@ class ImportTest extends DuskTestCase
             ],
         ]);
 
-                try {
+        try {
             $this->browse(function (Browser $browser) use ($cheminXlsx) {
                 $browser->visit('/login')
-                    ->type('.login-label:nth-child(1) input', 'admin@menara-holding.ma')
+                    ->type('.login-label:nth-child(1) input', 'Administrateur')
                     ->type('.login-label:nth-child(2) input', 'MenaraAdmin2026!')
                     ->press('Se connecter')
                     ->waitUntilMissing('.login-page', 20)
@@ -128,6 +128,8 @@ class ImportTest extends DuskTestCase
                     ->assertSee('filiale "ZZZ-INCONNU" inconnue');
             });
 
+            // La liste n'affiche pas le numéro de série (seulement code,
+            // filiale, type...) : la vraie preuve de la création est en base.
             $this->assertTrue(
                 Equipement::where('numero_serie', $numeroSerie)->exists(),
                 "L'équipement importé n'a pas été trouvé en base."

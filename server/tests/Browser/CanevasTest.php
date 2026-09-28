@@ -47,7 +47,7 @@ class CanevasTest extends DuskTestCase
 
         $this->browse(function (Browser $browser) {
             $browser->visit('/login')
-                ->type('.login-label:nth-child(1) input', 'admin@menara-holding.ma')
+                ->type('.login-label:nth-child(1) input', 'Administrateur')
                 ->type('.login-label:nth-child(2) input', 'MenaraAdmin2026!')
                 ->press('Se connecter')
                 ->waitUntilMissing('.login-page', 20);

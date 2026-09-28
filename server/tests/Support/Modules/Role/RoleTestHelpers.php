@@ -2,8 +2,8 @@
 
 namespace Tests\Support\Modules\Role;
 
-use App\Modules\Permission\Permission;
-use App\Modules\Utilisateur\Utilisateur;
+use App\Models\Permission;
+use App\Models\Utilisateur;
 use Database\Seeders\DatabaseSeeder;
 
 // Préparation commune aux tests fonctionnels et sécurité de Role (voir
@@ -23,7 +23,7 @@ trait RoleTestHelpers
     private function seConnecter(): void
     {
         $token = $this->postJson('/api/login', [
-            'email' => $this->utilisateur->email,
+            'nom' => $this->utilisateur->nom,
             'mot_de_passe' => 'MenaraAdmin2026!',
         ])->json('token');
 
@@ -39,7 +39,7 @@ trait RoleTestHelpers
         $utilisateur = Utilisateur::where('email', 'technicien.ctm@menara-holding.ma')->firstOrFail();
 
         $token = $this->postJson('/api/login', [
-            'email' => $utilisateur->email,
+            'nom' => $utilisateur->nom,
             'mot_de_passe' => 'MenaraTech2026!',
         ])->json('token');
 

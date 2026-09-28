@@ -2,8 +2,8 @@
 
 namespace Tests\Browser;
 
-use App\Modules\Role\Role;
-use App\Modules\Utilisateur\Utilisateur;
+use App\Models\Role;
+use App\Models\Utilisateur;
 use Facebook\WebDriver\WebDriverBy;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Dusk\Browser;
@@ -24,7 +24,7 @@ class RolesEtUtilisateursTest extends DuskTestCase
     private function connecterSuperAdmin(Browser $browser): void
     {
         $browser->visit('/login')
-            ->type('.login-label:nth-child(1) input', 'admin@menara-holding.ma')
+            ->type('.login-label:nth-child(1) input', 'Administrateur')
             ->type('.login-label:nth-child(2) input', 'MenaraAdmin2026!')
             ->press('Se connecter')
             ->waitUntilMissing('.login-page', 10);
@@ -63,15 +63,18 @@ class RolesEtUtilisateursTest extends DuskTestCase
                 // .plate est aussi la classe du panneau "Chargement..." : on
                 // attend le TEXTE du nouveau rôle, pas juste une carte
                 // quelconque, sinon on vérifie la page avant qu'elle ait
-                // fini de se recharger.
-                ->waitForText($nomRole, 10)
+                // fini de se recharger. Délai généreux (20s) : plusieurs
+                // tests Dusk qui tournent à la suite peuvent ralentir la
+                // machine.
+                ->waitForText($nomRole, 20)
                 ->assertSee('0 permission(s) accordée(s)');
 
             $this->supprimerCarteRole($browser, $nomRole);
-            // Laisse le temps à la liste de se recharger après la suppression
-            // (d'autres cartes .plate restent affichées, donc pas de
-            // waitUntilMissing possible ici).
-            $browser->pause(1000)->assertDontSee($nomRole);
+            // On attend la DISPARITION du texte (pas une pause fixe) : la
+            // liste se recharge après la suppression via un appel API, et
+            // une pause fixe est trop fragile si la machine est chargée
+            // (plusieurs tests Dusk qui tournent à la suite, par exemple).
+            $browser->waitUntilMissingText($nomRole, 10);
         });
 
         // Filet de sécurité si l'assertion a échoué avant la suppression UI.
@@ -83,7 +86,7 @@ class RolesEtUtilisateursTest extends DuskTestCase
         $nomRole = 'Rôle Dusk Temporaire '.uniqid();
         $role = Role::create(['libelle' => $nomRole, 'description' => 'Test Dusk']);
         $utilisateur = Utilisateur::create([
-            'nom' => 'Titulaire Rôle Dusk',
+            'nom' => 'Titulaire Rôle Dusk '.uniqid(),
             'email' => 'dusk.titulaire.'.uniqid().'@menara-holding.ma',
             'mot_de_passe' => Hash::make('PeuImporte123'),
             'id_role' => $role->id_role,
@@ -113,15 +116,16 @@ class RolesEtUtilisateursTest extends DuskTestCase
     public function test_creation_et_suppression_dun_utilisateur(): void
     {
         $email = 'dusk.utilisateur.'.uniqid().'@menara-holding.ma';
+        $nom = 'Utilisateur Test Dusk '.uniqid();
         $roleDirection = Role::where('libelle', 'Consultation Direction')->firstOrFail();
 
         try {
-            $this->browse(function (Browser $browser) use ($email, $roleDirection) {
+            $this->browse(function (Browser $browser) use ($email, $nom, $roleDirection) {
                 $this->connecterSuperAdmin($browser);
 
                 $browser->visit('/utilisateurs/nouveau')
                     ->waitFor('.field', 10)
-                    ->type('.field:nth-of-type(1) input', 'Utilisateur Test Dusk')
+                    ->type('.field:nth-of-type(1) input', $nom)
                     ->type('.field:nth-of-type(2) input', $email)
                     ->type('.field:nth-of-type(3) input', 'MotDePasseDusk123')
                     // La liste des rôles se charge de façon asynchrone (appel
@@ -138,7 +142,12 @@ class RolesEtUtilisateursTest extends DuskTestCase
                     ->waitForText($email, 10);
 
                 $this->supprimerLigneUtilisateur($browser, $email);
-                $browser->pause(1000)->assertDontSee($email);
+                // Même principe que pour la suppression de rôle plus haut :
+                // on attend la disparition du texte plutôt qu'une pause fixe,
+                // PUIS on vérifie explicitement (waitUntilMissingText seul ne
+                // compte pas comme une vérification pour PHPUnit).
+                $browser->waitUntilMissingText($email, 10)
+                    ->assertDontSee($email);
             });
         } finally {
             // Filet de sécurité si l'assertion a échoué avant la suppression UI.

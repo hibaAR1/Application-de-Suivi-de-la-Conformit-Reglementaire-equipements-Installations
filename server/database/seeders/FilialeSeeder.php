@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Modules\Filiale\Filiale;
+use App\Models\Filiale;
 use Illuminate\Database\Seeder;
 
 class FilialeSeeder extends Seeder

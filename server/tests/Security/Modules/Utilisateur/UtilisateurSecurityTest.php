@@ -2,8 +2,8 @@
 
 namespace Tests\Security\Modules\Utilisateur;
 
-use App\Modules\Role\Role;
-use App\Modules\Utilisateur\Utilisateur;
+use App\Models\Role;
+use App\Models\Utilisateur;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\Support\Modules\Utilisateur\UtilisateurTestHelpers;

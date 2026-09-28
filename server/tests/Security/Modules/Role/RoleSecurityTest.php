@@ -2,7 +2,7 @@
 
 namespace Tests\Security\Modules\Role;
 
-use App\Modules\Role\Role;
+use App\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\Modules\Role\RoleTestHelpers;
 use Tests\TestCase;

@@ -1,19 +1,19 @@
 <?php
 
-use App\Modules\Assistant\AssistantController;
-use App\Modules\Auth\AuthController;
-use App\Modules\Bootstrap\BootstrapController;
-use App\Modules\Controle\ControleController;
-use App\Modules\Equipement\EquipementController;
-use App\Modules\Filiale\FilialeController;
-use App\Modules\GroupeEquipement\GroupeEquipementController;
-use App\Modules\Permission\PermissionController;
-use App\Modules\Rapport\RapportController;
-use App\Modules\Reserve\ReserveController;
-use App\Modules\Role\RoleController;
-use App\Modules\Site\SiteController;
-use App\Modules\TypeEquipement\TypeEquipementController;
-use App\Modules\Utilisateur\UtilisateurController;
+use App\Http\Controllers\AssistantController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BootstrapController;
+use App\Http\Controllers\ControleController;
+use App\Http\Controllers\EquipementController;
+use App\Http\Controllers\FilialeController;
+use App\Http\Controllers\GroupeEquipementController;
+use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\RapportController;
+use App\Http\Controllers\ReserveController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SiteController;
+use App\Http\Controllers\TypeEquipementController;
+use App\Http\Controllers\UtilisateurController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);

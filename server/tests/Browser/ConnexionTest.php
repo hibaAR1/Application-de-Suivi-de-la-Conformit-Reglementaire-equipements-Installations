@@ -11,7 +11,7 @@ class ConnexionTest extends DuskTestCase
     {
         $this->browse(function (Browser $browser) {
             $browser->visit('/login')
-                ->type('input[type=email]', 'admin@menara-holding.ma')
+                ->type('input[type=text]', 'Administrateur')
                 ->type('input[type=password]', 'MenaraAdmin2026!')
                 ->press('Se connecter')
                 ->waitForLocation('/', 10)

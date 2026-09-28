@@ -18,11 +18,11 @@ export function AuthProvider({ children }) {
   );
   const [token, setToken] = useState(localStorage.getItem("token") || null);
 
-  const login = async (email, mot_de_passe) => {
+  const login = async (nom, mot_de_passe) => {
     const res = await fetch("http://127.0.0.1:8000/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, mot_de_passe }),
+      body: JSON.stringify({ nom, mot_de_passe }),
     });
 
     if (!res.ok) {
