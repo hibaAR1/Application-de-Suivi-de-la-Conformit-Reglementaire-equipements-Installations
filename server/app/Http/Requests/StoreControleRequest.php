@@ -21,7 +21,7 @@ class StoreControleRequest extends FormRequest
             'rapport' => 'nullable|file|mimes:pdf|max:10240', // PDF, 10 Mo max (CDC 3.2)
             'reserves' => 'nullable|array',
             'reserves.0.nature_reserve' => 'required_if:resultat_global,Favorable avec réserves|string',
-            'reserves.0.niveau_criticite' => 'required_if:resultat_global,Favorable avec réserves|in:Mineure,Majeure,Bloquante',
+          'reserves.0.niveau_criticite' => 'required_if:resultat_global,Favorable avec réserves|in:Mineure,Majeure,Critique',
         ];
     }
 }

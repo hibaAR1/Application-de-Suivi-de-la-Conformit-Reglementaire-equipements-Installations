@@ -16,7 +16,7 @@ class StoreReserveRequest extends FormRequest
         return [
             'id_controle' => 'required|integer|exists:controle,id_controle',
             'nature_reserve' => 'required|string',
-            'niveau_criticite' => 'required|in:Mineure,Majeure,Bloquante',
+'niveau_criticite' => 'required|in:Mineure,Majeure,Critique',
             'delai_levee' => 'nullable|date',
         ];
     }

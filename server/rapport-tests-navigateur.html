@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <title>Test Documentation</title>
+        <style>
+            body {
+                text-rendering: optimizeLegibility;
+                font-family: Source SansSerif Pro, Arial, sans-serif;
+                font-variant-ligatures: common-ligatures;
+                font-kerning: normal;
+                margin-left: 2rem;
+                background-color: #fff;
+                color: #000;
+            }
+
+            body > ul > li {
+                font-size: larger;
+            }
+
+            h2 {
+                font-size: larger;
+                text-decoration-line: underline;
+                text-decoration-thickness: 2px;
+                margin: 0;
+                padding: 0.5rem 0;
+            }
+
+            ul {
+                list-style: none;
+                margin: 0 0 2rem;
+                padding: 0 0 0 1rem;
+                text-indent: -1rem;
+            }
+
+            .success:before {
+                color: #4e9a06;
+                content: '✓';
+                padding-right: 0.5rem;
+            }
+
+            .defect {
+                color: #a40000;
+            }
+
+            .defect:before {
+                color: #a40000;
+                content: '✗';
+                padding-right: 0.5rem;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>Authentification (Tests\Browser\Authentification)</h2>
+        <ul>
+            <li class="success">Connexion reussie pour chaque role</li>
+            <li class="success">Echec connexion mauvais mot de passe</li>
+            <li class="success">Email inconnu refuse</li>
+            <li class="success">Page protegee redirige vers login si non connecte</li>
+            <li class="success">Deconnexion ramene vers login</li>
+        </ul>
+        <h2>Canevas (Tests\Browser\Canevas)</h2>
+        <ul>
+            <li class="success">Telechargement du canevas equipements</li>
+        </ul>
+        <h2>Changement Mot De Passe (Tests\Browser\ChangementMotDePasse)</h2>
+        <ul>
+            <li class="success">Confirmation qui ne correspond pas est refusee</li>
+            <li class="success">Nouvel utilisateur doit changer son mot de passe a la premiere connexion</li>
+        </ul>
+        <h2>Connexion (Tests\Browser\Connexion)</h2>
+        <ul>
+            <li class="success">Connexion super admin mene au tableau de bord</li>
+        </ul>
+        <h2>Donnees Base (Tests\Browser\DonneesBase)</h2>
+        <ul>
+            <li class="success">Creation modification et suppression dun groupe</li>
+            <li class="success">Creation modification et suppression dun type equipement</li>
+            <li class="success">Suppression dun type encore utilise est bloquee</li>
+            <li class="success">Acces donnees de base selon la permission</li>
+        </ul>
+        <h2>Equipements (Tests\Browser\Equipements)</h2>
+        <ul>
+            <li class="success">Creation puis visibilite des boutons selon permission puis suppression</li>
+        </ul>
+        <h2>Import (Tests\Browser\Import)</h2>
+        <ul>
+            <li class="success">Import dun fichier xlsx cree les equipements valides et liste les erreurs</li>
+        </ul>
+        <h2>Permissions (Tests\Browser\Permissions)</h2>
+        <ul>
+            <li class="success">Acces utilisateurs et roles selon la permission</li>
+        </ul>
+        <h2>Roles Et Utilisateurs (Tests\Browser\RolesEtUtilisateurs)</h2>
+        <ul>
+            <li class="success">Creation et suppression dun role inutilise</li>
+            <li class="success">Suppression dun role encore attribue est bloquee</li>
+            <li class="defect">Creation et suppression dun utilisateur</li>
+        </ul>
+        <h2>Scan (Tests\Browser\Scan)</h2>
+        <ul>
+            <li class="success">Acces autorise au scan</li>
+            <li class="success">Acces refuse au scan pour referent hse filiale</li>
+            <li class="success">Acces refuse au scan pour consultation direction</li>
+            <li class="success">Saisie manuelle de lidentifiant dans la popup scanner</li>
+        </ul>
+    </body>
+</html>

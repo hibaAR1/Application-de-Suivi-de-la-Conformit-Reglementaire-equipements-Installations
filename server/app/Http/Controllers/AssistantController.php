@@ -39,7 +39,7 @@ TEXT;
             ->implode(', ');
 
         $controlesRetard = Controle::where('prochaine_echeance', '<', now())->count();
-        $reservesOuvertes = Reserve::whereIn('statut', ['Ouverte', 'En cours', 'En retard'])->count();
+        $reservesOuvertes = Reserve::whereIn('statut', ['Ouverte', 'En cours'])->count();
 
         $types = TypeEquipement::all()
             ->map(fn ($t) => "{$t->libelle} ({$t->periodicite_controle} mois)")
