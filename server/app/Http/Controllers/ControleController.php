@@ -19,7 +19,7 @@ class ControleController extends Controller
     private const DELAI_LEVEE_JOURS = [
         'Mineure' => 90,
         'Majeure' => 30,
-        'Bloquante' => 7,
+        'Critique' => 7,
     ];
 
     public function index(Request $request)

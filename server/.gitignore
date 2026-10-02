@@ -24,3 +24,5 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 client/node_modules/
+downloads/*
+!downloads/.gitignore

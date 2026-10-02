@@ -12,10 +12,14 @@ import {
   IconLogout,
   IconChevron,
   IconQr,
+  IconMenu,
 } from "../../components/icons";
 
 const NAV_ITEMS = [
   { to: "/", label: "Tableau de bord", icon: IconGrid, end: true },
+  // Anciennement "/equipements/fixes" avec un filtre "Fixe" forcé par défaut
+  // (et le libellé "Équipements fixes") : renvoie maintenant vers la liste
+  // complète, sans présélection de groupe.
   { to: "/equipements", label: "Équipements", icon: IconBox },
   { to: "/controles", label: "Contrôles & réserves", icon: IconClipboard },
 ];
@@ -25,9 +29,16 @@ export default function Sidebar() {
   const { filialeActive, setFilialeActive, nom, filiales, onglets } =
     useFilialeTheme();
   const location = useLocation();
+  // Avant : `${user.role} · ${user.filialeLibelle}` — le nom de la filiale
+  // (ex: "Carrières & Transport Ménara") rendait le texte trop long et il
+  // était coupé, en haut sous le logo ET en bas à côté de l'avatar (les
+  // deux endroits utilisent cette même variable). On ne garde que le rôle.
   const roleLabel = user ? user.role : "";
   const logo = LOGOS_FILIALE[filialeActive] ?? LOGOS_FILIALE.GROUPE;
 
+  // "Données de base" : section repliable dans la sidebar (comme dans
+  // l'exemple donné), pas une page à part avec des cartes — on reste ouvert
+  // automatiquement si on est déjà sur une de ses sous-pages.
   const [donneesBaseOuvert, setDonneesBaseOuvert] = useState(
     location.pathname.startsWith("/donnees-base"),
   );
@@ -37,11 +48,61 @@ export default function Sidebar() {
     }
   }, [location.pathname]);
 
+  // Bouton "Scanner QR Code", juste sous le sélecteur de filiale (voir
+  // capture d'écran fournie) : ouvre ScannerEquipementModal.
   const [scanOuvert, setScanOuvert] = useState(false);
 
+  // Repli manuel du sidebar aux icônes seules (bouton ☰) : "auto" = suit le
+  // comportement par défaut selon la largeur d'écran (replié en dessous de
+  // 940px, comme avant) ; "ouvert"/"ferme" = l'utilisateur a cliqué, et son
+  // choix gagne désormais à n'importe quelle taille d'écran. Mémorisé pour
+  // rester fixe d'une page à l'autre et après rechargement. Le bouton est
+  // toujours affiché dès le premier rendu (pas derrière une condition de
+  // chargement), donc il ne disparaît jamais pendant le chargement d'une page.
+  const [etatSidebar, setEtatSidebar] = useState(() => {
+    try {
+      return localStorage.getItem("sidebarEtat") || "auto";
+    } catch {
+      return "auto";
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("sidebarEtat", etatSidebar);
+    } catch {
+      // stockage indisponible (navigation privée, etc.) : on ignore
+    }
+  }, [etatSidebar]);
+
+  const basculerSidebar = () => {
+    setEtatSidebar((v) => {
+      if (v === "ouvert") return "ferme";
+      if (v === "ferme") return "ouvert";
+      // Premier clic depuis "auto" : on part de ce qui est visuellement
+      // affiché actuellement (replié en dessous de 940px de large) pour que
+      // le bouton fasse l'inverse de ce qu'on voit à l'écran.
+      return window.innerWidth < 940 ? "ouvert" : "ferme";
+    });
+  };
+  const reduit = etatSidebar === "ferme";
+  const classeSidebar =
+    etatSidebar === "ferme"
+      ? " reduit"
+      : etatSidebar === "ouvert"
+        ? " agrandi"
+        : "";
+
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${classeSidebar}`}>
       <div className="brand">
+        <button
+          type="button"
+          className="sidebar-toggle"
+          onClick={basculerSidebar}
+          title={reduit ? "Déplier le menu" : "Replier le menu"}
+        >
+          <IconMenu />
+        </button>
         <div className="brand-logo">
           <img src={logo} alt={nom} />
         </div>
@@ -68,6 +129,10 @@ export default function Sidebar() {
         </select>
       )}
 
+      {/* Le Référent HSE filiale n'a pas le droit de scanner (demande
+          client) : bouton visible seulement pour qui a la permission
+          "equipements.scanner" (Super Admin, Administrateur SMI Holding,
+          Technicien terrain — voir PermissionSeeder.php). */}
       {user?.hasPermission("equipements.scanner") && (
         <>
           <button
@@ -132,6 +197,9 @@ export default function Sidebar() {
             <span className="nav-label">Utilisateurs</span>
           </NavLink>
         )}
+        {/* Gestion des rôles et de leurs permissions (créer un rôle, cocher
+            ses permissions par module, ajouter de nouvelles permissions) —
+            réservé aux mêmes comptes que la page Utilisateurs. */}
         {user?.hasPermission("utilisateurs.manage") && (
           <NavLink
             to="/roles"
@@ -142,6 +210,11 @@ export default function Sidebar() {
             <span className="nav-label">Rôles & Permissions</span>
           </NavLink>
         )}
+        {/* "Données de base" (Groupes, Types d'équipement) : utile à quiconque
+            crée/modifie des équipements (equipements.create), pas seulement
+            à qui gère les comptes utilisateurs — sinon un Référent HSE, qui a
+            equipements.create mais pas utilisateurs.manage, ne voyait jamais
+            cette section. */}
         {(user?.hasPermission("utilisateurs.manage") ||
           user?.hasPermission("equipements.create")) && (
           <>

@@ -14,7 +14,7 @@ class UpdateReserveRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'statut' => 'sometimes|in:Ouverte,En cours,Levée,En retard',
+'statut' => 'sometimes|in:Ouverte,En cours,Clôturée',
             'justificatif_levee' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240', // PDF/image, 10 Mo max
             'date_levee_effective' => 'nullable|date',
         ];

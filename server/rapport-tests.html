@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <title>Test Documentation</title>
+        <style>
+            body {
+                text-rendering: optimizeLegibility;
+                font-family: Source SansSerif Pro, Arial, sans-serif;
+                font-variant-ligatures: common-ligatures;
+                font-kerning: normal;
+                margin-left: 2rem;
+                background-color: #fff;
+                color: #000;
+            }
+
+            body > ul > li {
+                font-size: larger;
+            }
+
+            h2 {
+                font-size: larger;
+                text-decoration-line: underline;
+                text-decoration-thickness: 2px;
+                margin: 0;
+                padding: 0.5rem 0;
+            }
+
+            ul {
+                list-style: none;
+                margin: 0 0 2rem;
+                padding: 0 0 0 1rem;
+                text-indent: -1rem;
+            }
+
+            .success:before {
+                color: #4e9a06;
+                content: '✓';
+                padding-right: 0.5rem;
+            }
+
+            .defect {
+                color: #a40000;
+            }
+
+            .defect:before {
+                color: #a40000;
+                content: '✗';
+                padding-right: 0.5rem;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>Auth Api (Tests\Feature\Modules\Auth\AuthApi)</h2>
+        <ul>
+            <li class="success">La connexion reussit avec les bons identifiants et retourne un token</li>
+            <li class="success">La connexion charge le role avec ses permissions</li>
+            <li class="success">La connexion echoue avec un mauvais mot de passe</li>
+            <li class="success">La connexion echoue avec un email inconnu</li>
+            <li class="success">Me retourne lutilisateur connecte</li>
+            <li class="success">La deconnexion invalide le token</li>
+            <li class="success">Le changement de mot de passe reussit et desactive lobligation</li>
+            <li class="success">Le changement de mot de passe echoue si la confirmation ne correspond pas</li>
+            <li class="success">Le changement de mot de passe echoue si le mot de passe actuel est faux</li>
+        </ul>
+        <h2>Auth Security (Tests\Security\Modules\Auth\AuthSecurity)</h2>
+        <ul>
+            <li class="success">Me necessite une authentification</li>
+            <li class="success">Deconnexion necessite une authentification</li>
+            <li class="success">Changer mot de passe necessite une authentification</li>
+            <li class="success">Un token invalide est refuse</li>
+            <li class="success">Le message derreur est identique pour un email inconnu et un mauvais mot de passe</li>
+            <li class="success">Un email de connexion malveillant ne casse rien</li>
+            <li class="success">Le changement de mot de passe ne change pas celui dun autre utilisateur</li>
+        </ul>
+        <h2>Equipement Api (Tests\Feature\Modules\Equipement\EquipementApi)</h2>
+        <ul>
+            <li class="success">La liste retourne les equipements avec leurs relations</li>
+            <li class="success">La liste peut etre filtree par filiale</li>
+            <li class="success">Un equipement inexistant retourne 404</li>
+            <li class="success">La creation genere un identifiant au bon format</li>
+            <li class="success">La creation echoue si des champs obligatoires manquent</li>
+            <li class="success">La creation echoue si le numero de serie existe deja</li>
+            <li class="success">Un statut hors liste autorisee est rejete</li>
+            <li class="success">La modification met a jour les champs fournis</li>
+            <li class="success">La modification autorise a garder son propre numero de serie</li>
+            <li class="success">La suppression supprime aussi les controles associes</li>
+        </ul>
+        <h2>Equipement Model (Tests\Unit\Modules\Equipement\EquipementModel)</h2>
+        <ul>
+            <li class="success">Caracteristiques est bien castee en tableau</li>
+            <li class="success">La cle primaire est id equipement et nest pas auto incrementee</li>
+            <li class="success">Les champs assignables en masse sont ceux attendus</li>
+            <li class="success">Les relations sont du bon type</li>
+        </ul>
+        <h2>Equipement Resource (Tests\Unit\Modules\Equipement\EquipementResource)</h2>
+        <ul>
+            <li class="success">Toarray contient les champs bruts de lequipement</li>
+        </ul>
+        <h2>Equipement Security (Tests\Security\Modules\Equipement\EquipementSecurity)</h2>
+        <ul>
+            <li class="success">Lister les equipements necessite une authentification</li>
+            <li class="success">Creer un equipement necessite une authentification</li>
+            <li class="success">Supprimer un equipement necessite une authentification</li>
+            <li class="success">Lidentifiant envoye par le client est ignore</li>
+            <li class="success">Un filtre de filiale malveillant ne casse rien et ne renvoie rien</li>
+            <li class="success">Modifier un equipement est autorise pour un role avec le droit with data set "Super Admin"</li>
+            <li class="success">Modifier un equipement est autorise pour un role avec le droit with data set "Administrateur SMI Holding"</li>
+            <li class="success">Modifier un equipement est autorise pour un role avec le droit with data set "Référent HSE filiale"</li>
+            <li class="success">Modifier un equipement est refuse pour un role sans le droit with data set "Technicien terrain"</li>
+            <li class="success">Modifier un equipement est refuse pour un role sans le droit with data set "Consultation Direction"</li>
+            <li class="success">Supprimer un equipement est autorise pour un role avec le droit with data set "Super Admin"</li>
+            <li class="success">Supprimer un equipement est autorise pour un role avec le droit with data set "Administrateur SMI Holding"</li>
+            <li class="success">Supprimer un equipement est refuse pour un role sans le droit with data set "Référent HSE filiale"</li>
+            <li class="success">Supprimer un equipement est refuse pour un role sans le droit with data set "Technicien terrain"</li>
+            <li class="success">Supprimer un equipement est refuse pour un role sans le droit with data set "Consultation Direction"</li>
+        </ul>
+        <h2>Role Api (Tests\Feature\Modules\Role\RoleApi)</h2>
+        <ul>
+            <li class="success">La liste retourne les roles avec leurs permissions</li>
+            <li class="success">La creation cree un role avec ses permissions</li>
+            <li class="success">La creation echoue si le libelle existe deja</li>
+            <li class="success">La creation echoue si le libelle manque</li>
+            <li class="success">La modification met a jour le libelle et remplace les permissions</li>
+            <li class="success">La modification autorise a garder son propre libelle</li>
+            <li class="success">La suppression supprime un role non utilise</li>
+            <li class="success">La suppression est bloquee si un utilisateur a encore ce role</li>
+        </ul>
+        <h2>Role Model (Tests\Unit\Modules\Role\RoleModel)</h2>
+        <ul>
+            <li class="success">La cle primaire est id role et le modele na pas de timestamps</li>
+            <li class="success">Les champs assignables en masse sont ceux attendus</li>
+            <li class="success">Les relations sont du bon type</li>
+            <li class="success">La relation permissions passe bien par la table pivot role permission</li>
+        </ul>
+        <h2>Role Security (Tests\Security\Modules\Role\RoleSecurity)</h2>
+        <ul>
+            <li class="success">Lister les roles necessite une authentification</li>
+            <li class="success">Creer un role necessite une authentification</li>
+            <li class="success">Supprimer un role necessite une authentification</li>
+            <li class="success">Lister les roles est refuse sans la permission utilisateurs manage</li>
+            <li class="success">Creer un role est refuse sans la permission utilisateurs manage</li>
+            <li class="success">Modifier un role est refuse sans la permission utilisateurs manage</li>
+            <li class="success">Supprimer un role est refuse sans la permission utilisateurs manage</li>
+            <li class="success">Lidentifiant envoye par le client est ignore</li>
+            <li class="success">Des id permissions inexistants sont rejetes</li>
+            <li class="success">Un id role malveillant dans lurl ne casse rien</li>
+        </ul>
+        <h2>Utilisateur Api (Tests\Feature\Modules\Utilisateur\UtilisateurApi)</h2>
+        <ul>
+            <li class="success">La liste retourne les utilisateurs avec leur role</li>
+            <li class="success">Le mot de passe najamais dans la reponse</li>
+            <li class="success">La creation cree un utilisateur avec mot de passe a changer au premier login</li>
+            <li class="success">La creation rattache les filiales choisies</li>
+            <li class="success">La creation echoue si lemail existe deja</li>
+            <li class="success">La creation echoue si le mot de passe est trop court</li>
+            <li class="success">La creation echoue si le role nexiste pas</li>
+            <li class="success">La modification met a jour le nom et le role</li>
+            <li class="success">La modification peut desactiver un compte</li>
+            <li class="success">La suppression supprime lutilisateur</li>
+        </ul>
+        <h2>Utilisateur Model (Tests\Unit\Modules\Utilisateur\UtilisateurModel)</h2>
+        <ul>
+            <li class="success">La cle primaire est id utilisateur et le modele na pas de timestamps</li>
+            <li class="success">Le mot de passe est cache du tableau serialise</li>
+            <li class="success">Actif et doit changer mot passe sont bien castes en booleen</li>
+            <li class="success">Les champs assignables en masse sont ceux attendus</li>
+            <li class="success">Les relations sont du bon type</li>
+            <li class="success">Haspermission est vrai quand le role a la permission</li>
+            <li class="success">Haspermission est faux quand lutilisateur na pas de role</li>
+        </ul>
+        <h2>Utilisateur Security (Tests\Security\Modules\Utilisateur\UtilisateurSecurity)</h2>
+        <ul>
+            <li class="success">Lister les utilisateurs necessite une authentification</li>
+            <li class="success">Creer un utilisateur necessite une authentification</li>
+            <li class="success">Supprimer un utilisateur necessite une authentification</li>
+            <li class="success">Lister les utilisateurs est refuse sans la permission utilisateurs manage</li>
+            <li class="success">Creer un utilisateur est refuse sans la permission utilisateurs manage</li>
+            <li class="success">Modifier un utilisateur est refuse sans la permission utilisateurs manage</li>
+            <li class="success">Supprimer un utilisateur est refuse sans la permission utilisateurs manage</li>
+            <li class="success">Lidentifiant envoye par le client est ignore</li>
+            <li class="success">Le flag doit changer mot passe envoye par le client est ignore a la creation</li>
+            <li class="success">La modification du mot de passe doit etre prise en compte</li>
+        </ul>
+    </body>
+</html>
