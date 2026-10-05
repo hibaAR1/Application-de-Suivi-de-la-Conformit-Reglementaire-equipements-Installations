@@ -22,6 +22,7 @@ export default function ReserveForm() {
   );
   const [fichier, setFichier] = useState(null);
   const [erreur, setErreur] = useState("");
+  const [envoi, setEnvoi] = useState(false);
 
   if (!controle || !controle.reserve) {
     return (
@@ -30,8 +31,6 @@ export default function ReserveForm() {
       </div>
     );
   }
-
-  const [envoi, setEnvoi] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
