@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useEquipements } from "../../context/EquipementsContext";
 
 const overlayStyle = {
@@ -24,23 +24,13 @@ const cardStyle = {
   padding: 24,
 };
 
-// Popup "+ Nouveau type d'équipement" : nom, périodicité, et une liste de
-// "Caractéristiques" (autant que l'utilisatrice en ajoute) qui deviendront
-// les champs de l'onglet "Caractéristiques" de la fiche équipement.
-// Le champ "Groupe" (Fixe/Mobile) a été retiré de cette popup : le type est
-// créé avec le groupe "Fixe" par défaut, modifiable ensuite si besoin.
-//
-// `typeExistant` (optionnel) : passe la popup en mode modification (page
-// "Données de base > Types d'équipement") — pré-remplit les champs et
-// appelle modifierTypeEquipement() au lieu de creerTypeEquipement().
 export default function NouveauTypeModal({ onClose, onCree, typeExistant }) {
-  const { creerTypeEquipement, modifierTypeEquipement } = useEquipements();
+  const { creerTypeEquipement, modifierTypeEquipement, typesEquipement } =
+    useEquipements();
   const modeEdition = Boolean(typeExistant);
   const [libelle, setLibelle] = useState(typeExistant?.libelle ?? "");
-  // Pas de sélecteur ici (retiré exprès) : à la création on fige "Fixe", mais
-  // en modification on garde la catégorie déjà enregistrée pour ne pas
-  // l'écraser silencieusement.
-  const [categorie] = useState(typeExistant?.categorie ?? "Fixe");
+  const [libelleLibre, setLibelleLibre] = useState(false);
+  const [categorie, setCategorie] = useState(typeExistant?.categorie ?? "");
   const [periodicite, setPeriodicite] = useState(
     typeExistant?.periodicite_controle
       ? String(typeExistant.periodicite_controle)
@@ -53,6 +43,44 @@ export default function NouveauTypeModal({ onClose, onCree, typeExistant }) {
   );
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState("");
+
+  const catalogueNomsTypes = useMemo(() => {
+    const set = new Set();
+    for (const t of typesEquipement) {
+      if (t.libelle) set.add(t.libelle);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [typesEquipement]);
+
+  // Vrai seulement en création (pas en modification) quand le nom choisi
+  // dans la liste correspond à un type déjà existant : dans ce cas le
+  // Groupe est hérité de ce type et grisé.
+  const typeExistantSelectionne =
+    !modeEdition && !libelleLibre && catalogueNomsTypes.includes(libelle);
+
+  function basculerLibelleLibre() {
+    setLibelleLibre((libreActuel) => {
+      const nouveau = !libreActuel;
+      if (nouveau) {
+        setLibelle("");
+        setCategorie("");
+      } else if (!catalogueNomsTypes.includes(libelle)) {
+        setLibelle("");
+        setCategorie("");
+      }
+      return nouveau;
+    });
+  }
+
+  // Choix d'un nom dans la liste déroulante : si ce nom correspond à un
+  // type déjà existant, on reprend automatiquement son Groupe.
+  function choisirLibelleExistant(nom) {
+    setLibelle(nom);
+    if (!modeEdition) {
+      const typeCorrespondant = typesEquipement.find((t) => t.libelle === nom);
+      setCategorie(typeCorrespondant?.categorie ?? "");
+    }
+  }
 
   function modifierCaracteristique(index, valeur) {
     setCaracteristiques((prev) =>
@@ -72,6 +100,10 @@ export default function NouveauTypeModal({ onClose, onCree, typeExistant }) {
     e.preventDefault();
     if (!libelle.trim()) {
       setErreur("Le nom du type est obligatoire.");
+      return;
+    }
+    if (!categorie) {
+      setErreur("Le groupe (Fixe ou Mobile) est obligatoire.");
       return;
     }
     if (!periodicite || Number(periodicite) < 1) {
@@ -129,12 +161,96 @@ export default function NouveauTypeModal({ onClose, onCree, typeExistant }) {
         <form onSubmit={enregistrer}>
           <div className="field">
             <label>Nom du type</label>
-            <input
-              type="text"
-              placeholder="ex: Groupe électrogène"
-              value={libelle}
-              onChange={(e) => setLibelle(e.target.value)}
-            />
+            <div style={{ display: "flex", gap: 8 }}>
+              {libelleLibre ? (
+                <input
+                  type="text"
+                  placeholder="ex: Groupe électrogène"
+                  value={libelle}
+                  onChange={(e) => setLibelle(e.target.value)}
+                  style={{ flex: 1 }}
+                />
+              ) : (
+                <select
+                  value={catalogueNomsTypes.includes(libelle) ? libelle : ""}
+                  onChange={(e) => choisirLibelleExistant(e.target.value)}
+                  style={{ flex: 1 }}
+                >
+                  <option value="" disabled>
+                    — Choisir un nom de type —
+                  </option>
+                  {catalogueNomsTypes.map((nom) => (
+                    <option key={nom} value={nom}>
+                      {nom}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ padding: "6px 12px", flexShrink: 0 }}
+                onClick={basculerLibelleLibre}
+                title={
+                  libelleLibre
+                    ? "Choisir dans la liste existante"
+                    : "Ajouter un nouveau nom"
+                }
+              >
+                {libelleLibre ? "☰" : "+"}
+              </button>
+            </div>
+            {libelleLibre && (
+              <button
+                type="button"
+                onClick={basculerLibelleLibre}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--bordeaux)",
+                  fontSize: 11.5,
+                  cursor: "pointer",
+                  padding: "2px 0",
+                  marginTop: 2,
+                }}
+              >
+                ↩ choisir dans la liste existante
+              </button>
+            )}
+          </div>
+
+          <div className="field">
+            <label>Groupe</label>
+            <select
+              value={categorie}
+              onChange={(e) => setCategorie(e.target.value)}
+              disabled={typeExistantSelectionne}
+              style={
+                typeExistantSelectionne
+                  ? {
+                      background: "var(--surface-2)",
+                      color: "var(--text-muted)",
+                    }
+                  : undefined
+              }
+            >
+              <option value="" disabled>
+                — Choisir —
+              </option>
+              <option value="Fixe">Fixe</option>
+              <option value="Mobile">Mobile</option>
+            </select>
+            {typeExistantSelectionne && (
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "var(--text-muted)",
+                  marginTop: 4,
+                }}
+              >
+                Groupe déjà défini pour ce type existant.
+              </div>
+            )}
           </div>
 
           <div className="field">

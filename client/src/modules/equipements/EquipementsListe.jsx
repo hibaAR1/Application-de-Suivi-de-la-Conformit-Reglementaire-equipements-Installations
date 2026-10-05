@@ -318,7 +318,6 @@ export default function EquipementsListe({ categorie }) {
     groupesEquipement.forEach((g) => set.add(g.libelle));
     return Array.from(set);
   }, [typesEquipement, groupesEquipement]);
-
   const filtres = useMemo(() => {
     const q = recherche.trim().toLowerCase();
     return equipements.filter((e) => {

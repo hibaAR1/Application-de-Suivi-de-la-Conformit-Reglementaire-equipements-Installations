@@ -15,7 +15,7 @@ class Equipement extends Model
     protected $primaryKey = 'id_equipement';
     public $incrementing = false;
     protected $keyType = 'string';
-    public $timestamps = false;
+
 
     protected $fillable = [
         'id_equipement', 'referentiel', 'id_filiale', 'id_site', 'id_type_equipement',

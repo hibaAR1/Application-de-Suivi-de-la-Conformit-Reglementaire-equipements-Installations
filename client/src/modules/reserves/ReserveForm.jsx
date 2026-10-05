@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import Plate from "../../components/Plate";
 import Badge from "../../components/Badge";
 import { useControles } from "../../context/ControlesContext";
-
+import { useEquipements } from "../../context/EquipementsContext";
 // §3.2 du CDC — champs "Justificatif de levée" (PDF/image) et "Date de levée
 // effective". Valider ce formulaire fait passer la réserve au statut "Clôturée".
 export default function ReserveForm() {
@@ -14,6 +14,7 @@ export default function ReserveForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { controles, leverReserve } = useControles();
+  const { rafraichirEquipements } = useEquipements();
   const controle = controles.find(
     (c) => c.reserve && String(c.reserve.idReserve) === id,
   );
@@ -41,6 +42,7 @@ export default function ReserveForm() {
         fichier,
         dateLeveeEffective: dateEffective,
       });
+      await rafraichirEquipements();
       navigate("/equipements");
     } catch (e2) {
       setErreur(e2.message);

@@ -229,6 +229,12 @@ export function EquipementsProvider({ children }) {
     setTypesEquipement((prev) =>
       prev.map((t) => (t.id_type_equipement === id ? type : t)),
     );
+    // Les équipements déjà chargés gardent chacun une copie imbriquée de leur
+    // type (eq.type_equipement.caracteristiques_definition), lue par l'onglet
+    // "Caractéristiques" de la fiche équipement. Sans ce rafraîchissement,
+    // une caractéristique ajoutée/modifiée ici n'apparaissait pas sur la
+    // fiche tant qu'on ne rechargeait pas complètement la page.
+    await rafraichirEquipements();
     return type;
   }
 

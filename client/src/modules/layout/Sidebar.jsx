@@ -7,6 +7,7 @@ import ScannerEquipementModal from "../scan/ScannerEquipementModal";
 import {
   IconGrid,
   IconBox,
+  IconClipboard,
   IconUsers,
   IconLogout,
   IconChevron,
@@ -14,19 +15,12 @@ import {
   IconMenu,
   IconAlert,
 } from "../../components/icons";
-
 const NAV_ITEMS = [
   { to: "/", label: "Tableau de bord", icon: IconGrid, end: true },
-  // Anciennement "/equipements/fixes" avec un filtre "Fixe" forcé par défaut
-  // (et le libellé "Équipements fixes") : renvoie maintenant vers la liste
-  // complète, sans présélection de groupe.
-  { to: "/equipements", label: "Équipements", icon: IconBox },
-  // Remplace l'ancienne page "Contrôles & réserves" : toutes les réserves de
-  // toutes les filiales, filtrables par filiale / fixe-mobile / statut /
-  // gravité, affichées en cartes.
+  { to: "/equipements/fixes", label: "Équipements", icon: IconBox },
+  { to: "/equipements/mobiles", label: "Engins mobiles", icon: IconClipboard },
   { to: "/reserves", label: "Réserves & Plan d'action", icon: IconAlert },
 ];
-
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const { filialeActive, setFilialeActive, nom, filiales, onglets } =

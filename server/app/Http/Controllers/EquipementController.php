@@ -25,7 +25,8 @@ class EquipementController extends Controller
             $query->where('id_filiale', $request->id_filiale);
         }
 
-        return EquipementResource::collection($query->get());
+                // Les plus récemment créés en premier (page "Équipements").
+        return EquipementResource::collection($query->orderByDesc('created_at')->get());
     }
 
     public function show($id)
