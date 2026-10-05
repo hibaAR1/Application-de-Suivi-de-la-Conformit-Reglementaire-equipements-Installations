@@ -8,6 +8,9 @@
   --grid-line: rgba(33, 29, 26, 0.05);
   --bordeaux: #7A2431;
   --gold: #A6812E;
+  /* Repli avant que AppLayout.jsx ne fixe --gold/--gold-contrast selon la
+     filiale active (couleursFiliale.js) — ne devrait quasi jamais s'afficher. */
+  --gold-contrast: #1C1917;
   --anthracite: #211D1A;
   --success: #3E7D55;
   --success-bg: #E5F0E5;
@@ -67,30 +70,41 @@ a { color: inherit; text-decoration: none; }
 .plate .c4 { bottom: -1px; right: -1px; border-bottom: 1.5px solid var(--gold); border-right: 1.5px solid var(--gold); }
 
 .app-shell { display: flex; min-height: 100vh; container-type: inline-size; }
-.sidebar { width: 252px; flex-shrink: 0; background: #0C0B0A; color: #EFE9DF; display: flex; flex-direction: column; padding: 22px 15px; }
+/* Couleur de fond = couleur de la filiale active (variable --gold, définie
+   dynamiquement dans AppLayout.jsx selon FILIALES_THEME) ; --gold-contrast
+   est calculée pour rester lisible dessus (blanc ou sombre selon le cas). */
+.sidebar { width: 252px; flex-shrink: 0; background: var(--gold); color: var(--gold-contrast); display: flex; flex-direction: column; padding: 22px 15px; order: 2; }
+.main { order: 1; }
 .brand { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 2px 6px 14px; }
 .sidebar-toggle { align-self: flex-start; background: none; border: none; color: inherit; opacity: 0.6; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .sidebar-toggle:hover { opacity: 1; }
+.sidebar-toggle:focus { outline: 2px solid var(--bordeaux); outline-offset: 2px; }
 
-.brand-mark { width: 34px; height: 34px; background: var(--gold); display: flex; align-items: center; justify-content: center; font-family: 'Archivo', sans-serif; font-weight: 800; color: var(--gold-contrast, #1C1917); font-size: 14px; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); flex-shrink: 0; }
+/* box-shadow en anneau : nécessaire car le sidebar a maintenant le même
+   fond que --gold (couleur filiale) — sans cet anneau, la pastille du logo
+   redeviendrait invisible dessus en sidebar repliée. */
+.brand-mark { width: 34px; height: 34px; background: var(--gold); box-shadow: 0 0 0 1px color-mix(in srgb, var(--gold-contrast) 35%, transparent); display: flex; align-items: center; justify-content: center; font-family: 'Archivo', sans-serif; font-weight: 800; color: var(--gold-contrast, #1C1917); font-size: 14px; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); flex-shrink: 0; }
 .brand-logo { display: flex; align-items: center; background: #fff; border-radius: 8px; padding: 8px 10px; width: 100%; }
 .brand-logo img { display: block; width: 100%; height: auto; max-height: 40px; object-fit: contain; }
 .sidebar .brand-mark { display: none; }
 .brand-text { font-family: 'Archivo', sans-serif; font-weight: 700; font-size: 14px; line-height: 1.2; white-space: nowrap; }
 .brand-text span { display: block; font-family: 'IBM Plex Mono', monospace; font-weight: 400; font-size: 10px; letter-spacing: 0.04em; opacity: 0.55; margin-top: 3px; text-transform: uppercase; }
-.filiale-select { width: 100%; margin-bottom: 18px; background: rgba(239,233,223,0.08); border: 1px solid rgba(239,233,223,0.15); color: #EFE9DF; border-radius: 6px; padding: 8px 10px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; cursor: pointer; }
-.filiale-select option { background: #0C0B0A; color: #EFE9DF; }
-.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 6px; color: rgba(239, 233, 223, 0.7); background: none; border: none; width: 100%; text-align: left; font-size: 13.5px; font-weight: 500; margin-bottom: 1px; }
+.filiale-select { width: 100%; margin-bottom: 18px; background: color-mix(in srgb, var(--gold-contrast) 8%, transparent); border: 1px solid color-mix(in srgb, var(--gold-contrast) 15%, transparent); color: var(--gold-contrast); border-radius: 6px; padding: 8px 10px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; cursor: pointer; }
+.filiale-select option { background: var(--gold); color: var(--gold-contrast); }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 6px; color: color-mix(in srgb, var(--gold-contrast) 70%, transparent); background: none; border: none; width: 100%; text-align: left; font-size: 13.5px; font-weight: 500; margin-bottom: 1px; }
 .nav-item svg { flex-shrink: 0; }
-.nav-item.active { background: rgba(239, 233, 223, 0.09); color: #fff; box-shadow: inset 2px 0 0 var(--gold); }
-.nav-item:hover:not(.active) { color: #fff; }
-.nav-section-label { font-size: 10px; font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(239, 233, 223, 0.35); padding: 18px 11px 6px; white-space: nowrap; }
-.user-badge { margin-top: auto; padding-top: 16px; border-top: 1px solid rgba(239, 233, 223, 0.1); display: flex; align-items: center; gap: 10px; }
+/* L'accent actif était "inset ... var(--gold)" : maintenant que le fond du
+   sidebar EST --gold, ce même accent y deviendrait invisible — on utilise
+   donc --gold-contrast (la couleur de texte lisible) pour qu'il ressorte
+   quelle que soit la couleur de filiale. */
+.nav-item.active { background: color-mix(in srgb, var(--gold-contrast) 9%, transparent); color: var(--gold-contrast); box-shadow: inset 2px 0 0 var(--gold-contrast); }
+.nav-item:hover:not(.active) { color: var(--gold-contrast); }
+.nav-section-label { font-size: 10px; font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em; color: color-mix(in srgb, var(--gold-contrast) 35%, transparent); padding: 18px 11px 6px; white-space: nowrap; }
+.user-badge { margin-top: auto; padding-top: 16px; border-top: 1px solid color-mix(in srgb, var(--gold-contrast) 10%, transparent); display: flex; align-items: center; gap: 10px; }
 .user-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--bordeaux); display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700; color: #fff; flex-shrink: 0; }
-.user-name { font-size: 12.5px; font-weight: 600; color: #fff; white-space: nowrap; }
-.user-role { font-size: 11px; font-family: 'IBM Plex Mono', monospace; color: rgba(239, 233, 223, 0.5); white-space: nowrap; }
+.user-name { font-size: 12.5px; font-weight: 600; color: var(--gold-contrast); white-space: nowrap; }
+.user-role { font-size: 11px; font-family: 'IBM Plex Mono', monospace; color: color-mix(in srgb, var(--gold-contrast) 50%, transparent); white-space: nowrap; }
 
-.bottom-nav { display: none; }
 /* --- Repli manuel du sidebar (bouton ☰), valable a toute largeur d'ecran --- */
 .sidebar.reduit { width: 68px; padding: 22px 10px; align-items: center; }
 .sidebar.reduit .brand { padding-bottom: 22px; align-items: center; }
@@ -104,6 +118,9 @@ a { color: inherit; text-decoration: none; }
 .sidebar.reduit .nav-label,
 .sidebar.reduit .filiale-select { display: none; }
 .sidebar.reduit .nav-item { justify-content: center; padding: 11px; }
+
+.bottom-nav { display: none; }
+
 .main { flex: 1; min-width: 0; }
 .topbar { display: flex; align-items: center; justify-content: space-between; padding: 22px 34px; border-bottom: 1px solid var(--border); gap: 12px; flex-wrap: wrap; }
 .content { padding: 30px 34px 60px; }
@@ -172,7 +189,7 @@ tr:last-child td { border-bottom: none; }
 .badge-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 
 .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 5px; font-size: 13px; font-weight: 600; border: 1px solid transparent; }
-.btn-primary { background: var(--bordeaux); color: #fff; }
+.btn-primary { background: var(--gold); color: var(--gold-contrast); }
 .btn-secondary { background: var(--surface); border-color: var(--border); color: var(--text); }
 .btn-block { width: 100%; justify-content: center; padding: 13px; font-size: 14.5px; }
 

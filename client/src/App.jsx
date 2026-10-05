@@ -27,12 +27,19 @@ function App() {
           <Route path="/changer-mot-de-passe" element={<ChangerMotDePasse />} />
           <Route element={<AppLayout />}>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/equipements" element={<EquipementsListe />} />
+            <Route
+              path="/equipements"
+              element={<EquipementsListe key="tous" />}
+            />
             {/* Ancienne page "Équipements fixes" (filtre "Fixe" forcé) :
                 redirige vers la liste complète, sans présélection. */}
             <Route
               path="/equipements/fixes"
               element={<Navigate to="/equipements" replace />}
+            />
+            <Route
+              path="/engins-mobiles"
+              element={<EquipementsListe key="mobile" categorie="Mobile" />}
             />
             <Route path="/equipements/nouveau" element={<EquipementForm />} />
             <Route

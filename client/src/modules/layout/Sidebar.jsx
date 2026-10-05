@@ -3,6 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useFilialeTheme } from "../../context/FilialeThemeContext";
 import { LOGOS_FILIALE } from "../../data/logosFiliale";
+import EtiquettesQr from "../equipements/EtiquettesQr";
 import ScannerEquipementModal from "../scan/ScannerEquipementModal";
 import {
   IconGrid,
@@ -17,8 +18,8 @@ import {
 } from "../../components/icons";
 const NAV_ITEMS = [
   { to: "/", label: "Tableau de bord", icon: IconGrid, end: true },
-  { to: "/equipements/fixes", label: "Équipements", icon: IconBox },
-  { to: "/equipements/mobiles", label: "Engins mobiles", icon: IconClipboard },
+  { to: "/equipements", label: "Équipements", icon: IconBox },
+  { to: "/engins-mobiles", label: "Engins ", icon: IconClipboard },
   { to: "/reserves", label: "Réserves & Plan d'action", icon: IconAlert },
 ];
 export default function Sidebar() {
@@ -48,7 +49,9 @@ export default function Sidebar() {
   // Bouton "Scanner QR Code", juste sous le sélecteur de filiale (voir
   // capture d'écran fournie) : ouvre ScannerEquipementModal.
   const [scanOuvert, setScanOuvert] = useState(false);
-
+  // Popup "Étiquettes QR" (génère/imprime plusieurs étiquettes à la fois),
+  // même principe que le scan : un état, pas une route.
+  const [etiquettesQrOuvert, setEtiquettesQrOuvert] = useState(false);
   // Repli manuel du sidebar aux icônes seules (bouton ☰) : "auto" = suit le
   // comportement par défaut selon la largeur d'écran (replié en dessous de
   // 940px, comme avant) ; "ouvert"/"ferme" = l'utilisateur a cliqué, et son
@@ -151,6 +154,29 @@ export default function Sidebar() {
           </button>
           {scanOuvert && (
             <ScannerEquipementModal onClose={() => setScanOuvert(false)} />
+          )}
+          {/* "Étiquettes QR" : génère et imprime les étiquettes QR Code de
+          plusieurs équipements à la fois (filtrables par filiale, groupe,
+          site, type), contrairement au scan qui lit un seul QR Code. */}
+          <button
+            type="button"
+            onClick={() => setEtiquettesQrOuvert(true)}
+            className="nav-item"
+            style={{
+              cursor: "pointer",
+              fontFamily: "inherit",
+              width: "100%",
+              margin: "0 0 6px",
+              border: "none",
+              background: "none",
+            }}
+            title="Étiquettes QR"
+          >
+            <IconQr />
+            <span className="nav-label">Étiquettes QR</span>
+          </button>
+          {etiquettesQrOuvert && (
+            <EtiquettesQr onClose={() => setEtiquettesQrOuvert(false)} />
           )}
         </>
       )}
