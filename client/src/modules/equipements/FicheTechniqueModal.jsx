@@ -76,8 +76,14 @@ export default function FicheTechniqueModal({ id, onClose }) {
   const dernier = dernierControle(eq);
   const definition = eq.type_equipement?.caracteristiques_definition ?? [];
   const valeurs = eq.caracteristiques ?? {};
-  const valeurQr = `${window.location.origin}/scan/${eq.id_equipement}`;
-
+  // Avant : une URL complète ("${origin}/scan/${id}"), qui pointait vers le
+  // formulaire de contrôle terrain (MobileControl.jsx, supprimé — voir
+  // Phase 8). Cette route n'existe plus, donc on encode maintenant juste
+  // l'identifiant nu : le scanner de la sidebar (ScannerEquipementModal.jsx,
+  // bouton "Scanner QR Code") sait lire les deux formats, et un QR texte
+  // brut n'essaie pas d'ouvrir une page qui n'existe plus si on le scanne
+  // avec un appareil photo externe.
+  const valeurQr = eq.id_equipement;
   return (
     <div style={overlayStyle} onClick={onClose}>
       <div style={cardStyle} onClick={(e) => e.stopPropagation()}>

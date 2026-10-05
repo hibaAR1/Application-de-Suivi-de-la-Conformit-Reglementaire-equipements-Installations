@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import Plate from "../../components/Plate";
 import Badge from "../../components/Badge";
 import Gauge from "../../components/Gauge";
 import EquipementModal from "../equipements/EquipementModal";
+import ScannerEquipementModal from "../scan/ScannerEquipementModal";
 import { IconQr } from "../../components/icons";
 import { useAuth } from "../../context/AuthContext";
 import { useFilialeTheme } from "../../context/FilialeThemeContext";
@@ -19,8 +19,13 @@ const STATUT_BADGE = {
 };
 
 export default function Dashboard() {
-  const navigate = useNavigate();
   const { user } = useAuth();
+  // Bouton "Scanner un équipement" : avant, allait vers /scanner
+  // (ScanSimule.jsx -> MobileControl.jsx, formulaire de contrôle terrain,
+  // supprimé — Phase 8). Ouvre maintenant la même popup que le bouton
+  // "Scanner QR Code" de la sidebar (fiche technique, pas de formulaire de
+  // contrôle), avec la même règle de permission.
+  const [scanOuvert, setScanOuvert] = useState(false);
 
   // La filiale active et la liste des filiales viennent maintenant du contexte
   // partagé (chargées une seule fois, utilisées aussi par la Sidebar).
@@ -68,7 +73,8 @@ export default function Dashboard() {
     for (const eq of equipements) {
       for (const c of eq.controles ?? []) {
         for (const r of c.reserves ?? []) {
-          if (r.statut !== "Levée") liste.push({ equipement: eq, reserve: r });
+          if (r.statut !== "Clôturée")
+            liste.push({ equipement: eq, reserve: r });
         }
       }
     }
@@ -81,7 +87,7 @@ export default function Dashboard() {
     if (equipements.length === 0) return null;
     const refsEnDefaut = new Set(
       reservesOuvertes
-        .filter((r) => r.reserve.niveau_criticite === "Bloquante")
+        .filter((r) => r.reserve.niveau_criticite === "Critique")
         .map((r) => r.equipement.id_equipement),
     );
     return Math.round(
@@ -101,13 +107,19 @@ export default function Dashboard() {
           </div>
           <h1 style={{ fontSize: "22px" }}>Tableau de bord</h1>
         </div>
-        <button
-          className="btn btn-secondary"
-          onClick={() => navigate("/scanner")}
-        >
-          <IconQr /> Scanner un équipement
-        </button>
+        {user?.hasPermission("equipements.scanner") && (
+          <button
+            className="btn btn-secondary"
+            onClick={() => setScanOuvert(true)}
+          >
+            <IconQr /> Scanner un équipement
+          </button>
+        )}
       </div>
+
+      {scanOuvert && (
+        <ScannerEquipementModal onClose={() => setScanOuvert(false)} />
+      )}
 
       <div className="content">
         {erreur && (
@@ -148,10 +160,10 @@ export default function Dashboard() {
                       dont{" "}
                       {
                         reservesOuvertes.filter(
-                          (r) => r.reserve.niveau_criticite === "Bloquante",
+                          (r) => r.reserve.niveau_criticite === "Critique",
                         ).length
                       }{" "}
-                      bloquante(s)
+                      critique(s)
                     </div>
                   </div>
                 </Plate>
@@ -300,7 +312,7 @@ export default function Dashboard() {
                           </div>
                           <Badge
                             tone={
-                              r.reserve.niveau_criticite === "Bloquante"
+                              r.reserve.niveau_criticite === "Critique"
                                 ? "danger"
                                 : r.reserve.niveau_criticite === "Majeure"
                                   ? "warning"

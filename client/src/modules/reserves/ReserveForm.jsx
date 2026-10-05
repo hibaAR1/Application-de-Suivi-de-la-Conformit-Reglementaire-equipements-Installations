@@ -5,13 +5,18 @@ import Badge from "../../components/Badge";
 import { useControles } from "../../context/ControlesContext";
 
 // §3.2 du CDC — champs "Justificatif de levée" (PDF/image) et "Date de levée
-// effective". Valider ce formulaire fait passer la réserve au statut "Levée".
+// effective". Valider ce formulaire fait passer la réserve au statut "Clôturée".
 export default function ReserveForm() {
-  const { controleId } = useParams();
+  // La route est "/reserves/:id/lever" — "id" est l'identifiant de la
+  // RÉSERVE (voir OngletReserves dans EquipementModal.jsx, qui construit ce
+  // lien avec r.id_reserve), pas celui du contrôle. On retrouve donc le
+  // contrôle qui porte cette réserve, via controle.reserve.idReserve.
+  const { id } = useParams();
   const navigate = useNavigate();
   const { controles, leverReserve } = useControles();
-  const controle = controles.find((c) => String(c.id) === controleId);
-
+  const controle = controles.find(
+    (c) => c.reserve && String(c.reserve.idReserve) === id,
+  );
   const [dateEffective, setDateEffective] = useState(
     new Date().toISOString().slice(0, 10),
   );
@@ -26,15 +31,23 @@ export default function ReserveForm() {
     );
   }
 
-  function handleSubmit(e) {
+  const [envoi, setEnvoi] = useState(false);
+
+  async function handleSubmit(e) {
     e.preventDefault();
-    if (!fichier) {
-      setErreur("Le justificatif de levée est obligatoire (PDF ou image).");
-      return;
+    setErreur("");
+    setEnvoi(true);
+    try {
+      await leverReserve(controle.id, {
+        fichier,
+        dateLeveeEffective: dateEffective,
+      });
+      navigate("/equipements");
+    } catch (e2) {
+      setErreur(e2.message);
+    } finally {
+      setEnvoi(false);
     }
-    //leverReserve(controle.id, { justificatifNom: fichier.name, dateLeveeEffective: dateEffective });
-    leverReserve(controle.id, { fichier, dateLeveeEffective: dateEffective });
-    navigate("/equipements");
   }
 
   return (
@@ -107,8 +120,12 @@ export default function ReserveForm() {
             )}
 
             <div style={{ display: "flex", gap: 10 }}>
-              <button type="submit" className="btn btn-primary">
-                Confirmer la levée
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={envoi}
+              >
+                {envoi ? "Envoi…" : "Confirmer la levée"}
               </button>
               <button
                 type="button"

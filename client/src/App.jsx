@@ -6,13 +6,10 @@ import ChangerMotDePasse from "./modules/auth/ChangerMotDePasse";
 import Dashboard from "./modules/dashboard/Dashboard";
 import EquipementsListe from "./modules/equipements/EquipementsListe";
 import EquipementForm from "./modules/equipements/EquipementForm";
-import Controles from "./modules/controles/Controles";
 import ReserveForm from "./modules/reserves/ReserveForm";
-import Groupe from "./modules/groupe-consolide/Groupe";
-import MobileControl from "./modules/scan/MobileControl";
-import ScanSimule from "./modules/scan/ScanSimule";
-import Utilisateurs from "./modules/utilisateurs/Utilisateurs";
-import UtilisateurForm from "./modules/utilisateurs/UtilisateurForm";
+import ReservesPlanAction from "./modules/reserves/ReservesPlanAction";
+import Utilisateurs from "./modules/utilisateurs/Utilisateurs"; // AJOUTE
+import UtilisateurForm from "./modules/utilisateurs/UtilisateurForm"; // AJOUTE
 import GroupesEquipementAdmin from "./modules/equipements/GroupesEquipementAdmin";
 import TypesEquipementAdmin from "./modules/equipements/TypesEquipementAdmin";
 import RolesAdmin from "./modules/roles/RolesAdmin";
@@ -24,10 +21,15 @@ function App() {
         <Route path="/login" element={<Login />} />
 
         <Route element={<ProtectedRoute />}>
+          {/* Hors AppLayout (pas de sidebar) : tant que doitChangerMotPasse
+              est vrai, ProtectedRoute renvoie ici quelle que soit la page
+              demandée. */}
           <Route path="/changer-mot-de-passe" element={<ChangerMotDePasse />} />
           <Route element={<AppLayout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/equipements" element={<EquipementsListe />} />
+            {/* Ancienne page "Équipements fixes" (filtre "Fixe" forcé) :
+                redirige vers la liste complète, sans présélection. */}
             <Route
               path="/equipements/fixes"
               element={<Navigate to="/equipements" replace />}
@@ -37,16 +39,20 @@ function App() {
               path="/equipements/:ref/modifier"
               element={<EquipementForm />}
             />
-            <Route path="/controles" element={<Controles />} />
+            <Route path="/reserves" element={<ReservesPlanAction />} />
             <Route path="/reserves/:id/lever" element={<ReserveForm />} />
-            <Route path="/groupe" element={<Groupe />} />
-            <Route path="/scan" element={<ScanSimule />} />
-            <Route path="/scan/:id" element={<MobileControl />} />
-            <Route path="/mobile-control" element={<MobileControl />} />
-            <Route path="/scanner" element={<ScanSimule />} />
-            <Route path="/utilisateurs" element={<Utilisateurs />} />
-            <Route path="/utilisateurs/nouveau" element={<UtilisateurForm />} />
-            <Route path="/utilisateurs/:id" element={<UtilisateurForm />} />
+            <Route path="/utilisateurs" element={<Utilisateurs />} />{" "}
+            {/* AJOUTE */}
+            <Route
+              path="/utilisateurs/nouveau"
+              element={<UtilisateurForm />}
+            />{" "}
+            {/* AJOUTE */}
+            <Route
+              path="/utilisateurs/:id"
+              element={<UtilisateurForm />}
+            />{" "}
+            {/* AJOUTE */}
             <Route
               path="/donnees-base"
               element={<Navigate to="/donnees-base/groupes" replace />}

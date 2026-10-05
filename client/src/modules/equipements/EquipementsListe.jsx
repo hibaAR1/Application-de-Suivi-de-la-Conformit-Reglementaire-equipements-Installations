@@ -95,11 +95,11 @@ function dernierControle(eq) {
   )[0];
 }
 
-// Nombre de réserves encore ouvertes (statut différent de "Levée").
+// Nombre de réserves encore ouvertes (statut différent de "Clôturée").
 function reservesOuvertes(eq) {
   return (eq.controles ?? []).reduce(
     (total, c) =>
-      total + (c.reserves ?? []).filter((r) => r.statut !== "Levée").length,
+      total + (c.reserves ?? []).filter((r) => r.statut !== "Clôturée").length,
     0,
   );
 }

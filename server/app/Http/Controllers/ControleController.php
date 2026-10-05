@@ -65,17 +65,23 @@ class ControleController extends Controller
             ]);
 
             if ($data['resultat_global'] === 'Favorable avec réserves' && isset($data['reserves'][0])) {
-                $r = $data['reserves'][0];
-                Reserve::create([
-                    'id_controle' => $controle->id_controle,
-                    'nature_reserve' => $r['nature_reserve'],
-                    'niveau_criticite' => $r['niveau_criticite'],
-                    'delai_levee' => Carbon::parse($data['date_controle'])
-                        ->addDays(self::DELAI_LEVEE_JOURS[$r['niveau_criticite']])
-                        ->toDateString(),
-                    'statut' => 'Ouverte',
-                ]);
-            }
+    $r = $data['reserves'][0];
+    Reserve::create([
+        'id_controle' => $controle->id_controle,
+        'nature_reserve' => $r['nature_reserve'],
+        'niveau_criticite' => $r['niveau_criticite'],
+        'responsable' => $r['responsable'] ?? null,
+        'action_corrective' => $r['action_corrective'] ?? null,
+        // Échéance : celle choisie dans le formulaire si elle a été
+        // modifiée, sinon calculée depuis la date du contrôle + le
+        // délai réglementaire selon la criticité.
+        'delai_levee' => $r['delai_levee']
+            ?? Carbon::parse($data['date_controle'])
+                ->addDays(self::DELAI_LEVEE_JOURS[$r['niveau_criticite']])
+                ->toDateString(),
+        'statut' => 'Ouverte',
+    ]);
+}
 
             return $controle;
         });

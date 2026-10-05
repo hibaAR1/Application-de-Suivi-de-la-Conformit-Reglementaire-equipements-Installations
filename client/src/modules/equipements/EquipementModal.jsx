@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Badge from "../../components/Badge";
 import { useEquipements } from "../../context/EquipementsContext";
+import {
+  useControles,
+  NIVEAUX_CRITICITE,
+  DELAI_LEVEE_PAR_CRITICITE,
+} from "../../context/ControlesContext";
 
 const STATUT_TONE = {
   Conforme: "success",
@@ -11,8 +16,7 @@ const STATUT_TONE = {
 const RESERVE_STATUT_TONE = {
   Ouverte: "warning",
   "En cours": "warning",
-  Levée: "success",
-  "En retard": "danger",
+  Clôturée: "success",
 };
 
 const ONGLETS = [
@@ -67,7 +71,9 @@ export default function EquipementModal({ id, onClose }) {
     recupererRapports,
     ajouterRapport,
     genererAssistant,
+    rafraichirEquipements,
   } = useEquipements();
+  const { ajouterControle, marquerReserveEnCours } = useControles();
   const navigate = useNavigate();
   const eq = getByRef(id);
   const [onglet, setOnglet] = useState("Informations");
@@ -95,7 +101,9 @@ export default function EquipementModal({ id, onClose }) {
   const reserves = (eq.controles ?? []).flatMap((c) =>
     (c.reserves ?? []).map((r) => ({ ...r, controle: c })),
   );
-  const reservesOuvertes = reserves.filter((r) => r.statut !== "Levée").length;
+  const reservesOuvertes = reserves.filter(
+    (r) => r.statut !== "Clôturée",
+  ).length;
 
   return (
     <div style={overlayStyle} onClick={onClose}>
@@ -222,6 +230,10 @@ export default function EquipementModal({ id, onClose }) {
               reserves={reserves}
               navigate={navigate}
               onClose={onClose}
+              eq={eq}
+              ajouterControle={ajouterControle}
+              marquerReserveEnCours={marquerReserveEnCours}
+              rafraichirEquipements={rafraichirEquipements}
             />
           )}
           {onglet === "Caractéristiques" && (
@@ -706,70 +718,321 @@ function OngletRapports({ eq, rapports, setRapports, ajouterRapport }) {
   );
 }
 
-function OngletReserves({ reserves, navigate, onClose }) {
-  if (reserves.length === 0) {
-    return (
-      <p
-        style={{
-          color: "var(--text-muted)",
-          fontSize: 13,
-          textAlign: "center",
-          padding: "16px 0",
-        }}
-      >
-        Aucune réserve enregistrée pour cet équipement.
-      </p>
-    );
+function OngletReserves({
+  reserves,
+  navigate,
+  onClose,
+  eq,
+  ajouterControle,
+  marquerReserveEnCours,
+  rafraichirEquipements,
+}) {
+  const [formulaireOuvert, setFormulaireOuvert] = useState(false);
+  const [enCoursId, setEnCoursId] = useState(null);
+
+  async function demarrer(r) {
+    setEnCoursId(r.id_reserve);
+    try {
+      await marquerReserveEnCours(r.id_reserve);
+      await rafraichirEquipements();
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setEnCoursId(null);
+    }
   }
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {reserves.map((r) => (
-        <div
-          key={r.id_reserve}
+    <div>
+      {reserves.length === 0 ? (
+        <p
           style={{
-            border: "1px solid var(--border)",
-            borderRadius: 6,
-            padding: 12,
+            color: "var(--text-muted)",
+            fontSize: 13,
+            textAlign: "center",
+            padding: "16px 0",
           }}
         >
-          <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-            <Badge tone={RESERVE_STATUT_TONE[r.statut] ?? "warning"}>
-              {r.statut}
-            </Badge>
-            <Badge
-              tone={
-                r.niveau_criticite === "Bloquante"
-                  ? "danger"
-                  : r.niveau_criticite === "Majeure"
-                    ? "warning"
-                    : "success"
-              }
-            >
-              {r.niveau_criticite}
-            </Badge>
-          </div>
-          <div style={{ fontSize: 13.5 }}>{r.nature_reserve}</div>
-          <div
-            style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}
-          >
-            Délai réglementaire : {formaterDate(r.delai_levee)}
-          </div>
-          {r.statut !== "Levée" && (
-            <button
-              type="button"
-              className="btn btn-primary"
-              style={{ marginTop: 10, padding: "6px 12px", fontSize: 12.5 }}
-              onClick={() => {
-                onClose();
-                navigate(`/reserves/${r.id_reserve}/lever`);
+          Aucune réserve enregistrée pour cet équipement.
+        </p>
+      ) : (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            marginBottom: 14,
+          }}
+        >
+          {reserves.map((r) => (
+            <div
+              key={r.id_reserve}
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                padding: 12,
               }}
             >
-              Clôturer
-            </button>
-          )}
+              <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                <Badge tone={RESERVE_STATUT_TONE[r.statut] ?? "warning"}>
+                  {r.statut}
+                </Badge>
+                <Badge
+                  tone={
+                    r.niveau_criticite === "Critique"
+                      ? "danger"
+                      : r.niveau_criticite === "Majeure"
+                        ? "warning"
+                        : "success"
+                  }
+                >
+                  {r.niveau_criticite}
+                </Badge>
+              </div>
+              <div style={{ fontSize: 13.5 }}>{r.nature_reserve}</div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "var(--text-muted)",
+                  marginTop: 4,
+                }}
+              >
+                Délai réglementaire : {formaterDate(r.delai_levee)}
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                {r.statut === "Ouverte" && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ padding: "6px 12px", fontSize: 12.5 }}
+                    disabled={enCoursId === r.id_reserve}
+                    onClick={() => demarrer(r)}
+                  >
+                    {enCoursId === r.id_reserve ? "…" : "Marquer en cours"}
+                  </button>
+                )}
+                {r.statut !== "Clôturée" && (
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ padding: "6px 12px", fontSize: 12.5 }}
+                    onClick={() => {
+                      onClose();
+                      navigate(`/reserves/${r.id_reserve}/lever`);
+                    }}
+                  >
+                    Clôturer
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
+
+      {!formulaireOuvert ? (
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => setFormulaireOuvert(true)}
+        >
+          + Ajouter une réserve
+        </button>
+      ) : (
+        <FormulaireNouveauControle
+          eq={eq}
+          ajouterControle={ajouterControle}
+          rafraichirEquipements={rafraichirEquipements}
+          onTermine={() => setFormulaireOuvert(false)}
+        />
+      )}
     </div>
+  );
+}
+
+// Formulaire "Ajouter une réserve", au format exact de la maquette d'origine
+// d'Hiba (Description / Gravité / Échéance / Responsable / Action
+// corrective). Remplace l'ancien formulaire de scan (/scan/:id, voir
+// MobileControl.jsx — supprimé), ouvert ici depuis la fiche équipement elle-
+// même ("Ouvrir" → onglet Réserves) plutôt que depuis un scan QR code séparé.
+//
+// Côté base de données, une réserve est toujours rattachée à un contrôle
+// (id_controle obligatoire) : ce formulaire crée donc le contrôle en même
+// temps, de façon transparente, avec une date (aujourd'hui) et un organisme
+// par défaut — l'utilisatrice ne voit que les champs de sa maquette. Un
+// rapport PDF peut toujours être ajouté séparément depuis l'onglet
+// "Rapports" si besoin.
+function calculerEcheanceParDefaut(criticite) {
+  const jours = DELAI_LEVEE_PAR_CRITICITE[criticite] ?? 90;
+  const date = new Date();
+  date.setDate(date.getDate() + jours);
+  return date.toISOString().slice(0, 10);
+}
+
+function FormulaireNouveauControle({
+  eq,
+  ajouterControle,
+  rafraichirEquipements,
+  onTermine,
+}) {
+  const [description, setDescription] = useState("");
+  const [criticite, setCriticite] = useState(NIVEAUX_CRITICITE[1]);
+  const [echeance, setEcheance] = useState(() =>
+    calculerEcheanceParDefaut(NIVEAUX_CRITICITE[1]),
+  );
+  const [echeanceModifiee, setEcheanceModifiee] = useState(false);
+  const [responsable, setResponsable] = useState("");
+  const [actionCorrective, setActionCorrective] = useState("");
+  const [erreur, setErreur] = useState("");
+  const [envoi, setEnvoi] = useState(false);
+
+  function changerCriticite(valeur) {
+    setCriticite(valeur);
+    // Tant que l'utilisatrice n'a pas touché l'échéance à la main, elle suit
+    // le délai réglementaire par défaut de la gravité choisie.
+    if (!echeanceModifiee) setEcheance(calculerEcheanceParDefaut(valeur));
+  }
+
+  async function envoyer(e) {
+    e.preventDefault();
+    setErreur("");
+    if (!description.trim()) {
+      setErreur("Merci de décrire la réserve.");
+      return;
+    }
+    setEnvoi(true);
+    try {
+      await ajouterControle({
+        equipementRef: eq.id_equipement,
+        dateControle: new Date().toISOString().slice(0, 10),
+        organisme: "Non renseigné",
+        resultat: "Favorable avec réserves",
+        reserveInfo: {
+          nature: description,
+          criticite,
+          delaiLevee: echeance,
+          responsable: responsable.trim() || null,
+          actionCorrective: actionCorrective.trim() || null,
+        },
+      });
+      await rafraichirEquipements();
+      onTermine();
+    } catch (e2) {
+      setErreur(e2.message);
+    } finally {
+      setEnvoi(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={envoyer}
+      style={{
+        border: "1px dashed var(--border)",
+        borderRadius: 8,
+        padding: 14,
+      }}
+    >
+      <div className="field" style={{ marginBottom: 0 }}>
+        <label htmlFor="nc-description">Description *</label>
+        <textarea
+          id="nc-description"
+          rows={2}
+          style={{
+            width: "100%",
+            padding: 10,
+            border: "1px solid var(--border)",
+            borderRadius: 5,
+            background: "var(--surface)",
+            color: "var(--text)",
+            fontFamily: "inherit",
+            fontSize: 13.5,
+          }}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Ex. : étiquetage manquant"
+        />
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 12,
+          marginTop: 12,
+        }}
+      >
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label htmlFor="nc-gravite">Gravité</label>
+          <select
+            id="nc-gravite"
+            value={criticite}
+            onChange={(e) => changerCriticite(e.target.value)}
+          >
+            {NIVEAUX_CRITICITE.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label htmlFor="nc-echeance">Échéance</label>
+          <input
+            id="nc-echeance"
+            type="date"
+            value={echeance}
+            onChange={(e) => {
+              setEcheance(e.target.value);
+              setEcheanceModifiee(true);
+            }}
+          />
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 12,
+          marginTop: 12,
+        }}
+      >
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label htmlFor="nc-responsable">Responsable</label>
+          <input
+            id="nc-responsable"
+            type="text"
+            value={responsable}
+            onChange={(e) => setResponsable(e.target.value)}
+          />
+        </div>
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label htmlFor="nc-action">Action corrective</label>
+          <input
+            id="nc-action"
+            type="text"
+            value={actionCorrective}
+            onChange={(e) => setActionCorrective(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {erreur && (
+        <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 10 }}>
+          {erreur}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+        <button type="submit" className="btn btn-primary" disabled={envoi}>
+          {envoi ? "Enregistrement…" : "Enregistrer"}
+        </button>
+        <button type="button" className="btn btn-secondary" onClick={onTermine}>
+          Annuler
+        </button>
+      </div>
+    </form>
   );
 }
 

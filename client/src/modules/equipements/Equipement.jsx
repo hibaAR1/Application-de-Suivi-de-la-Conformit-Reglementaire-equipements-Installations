@@ -13,13 +13,12 @@ import { useEquipements } from "../../context/EquipementsContext";
 const CRITICITE_TONE = {
   Mineure: "success",
   Majeure: "warning",
-  Bloquante: "danger",
+  Critique: "danger",
 };
 const RESERVE_STATUT_TONE = {
   Ouverte: "warning",
   "En cours": "warning",
-  Levée: "success",
-  "En retard": "danger",
+  Clôturée: "success",
 };
 
 export default function Equipement() {
@@ -52,7 +51,7 @@ export default function Equipement() {
   let reserveActive = null;
   let controleAvecReserveActive = null;
   for (const c of historique) {
-    const r = (c.reserves ?? []).find((res) => res.statut !== "Levée");
+    const r = (c.reserves ?? []).find((res) => res.statut !== "Clôturée");
     if (r) {
       reserveActive = r;
       controleAvecReserveActive = c;

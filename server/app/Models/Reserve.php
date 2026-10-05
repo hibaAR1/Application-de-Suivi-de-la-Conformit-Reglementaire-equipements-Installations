@@ -12,9 +12,10 @@ class Reserve extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'id_controle', 'nature_reserve', 'niveau_criticite',
-        'delai_levee', 'statut', 'justificatif_levee', 'date_levee_effective',
-    ];
+    'id_controle', 'nature_reserve', 'niveau_criticite', 'responsable',
+    'action_corrective', 'delai_levee', 'statut', 'justificatif_levee',
+    'date_levee_effective',
+];
 
     public function controle()
     {

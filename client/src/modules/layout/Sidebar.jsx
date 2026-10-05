@@ -7,12 +7,12 @@ import ScannerEquipementModal from "../scan/ScannerEquipementModal";
 import {
   IconGrid,
   IconBox,
-  IconClipboard,
   IconUsers,
   IconLogout,
   IconChevron,
   IconQr,
   IconMenu,
+  IconAlert,
 } from "../../components/icons";
 
 const NAV_ITEMS = [
@@ -21,7 +21,10 @@ const NAV_ITEMS = [
   // (et le libellé "Équipements fixes") : renvoie maintenant vers la liste
   // complète, sans présélection de groupe.
   { to: "/equipements", label: "Équipements", icon: IconBox },
-  { to: "/controles", label: "Contrôles & réserves", icon: IconClipboard },
+  // Remplace l'ancienne page "Contrôles & réserves" : toutes les réserves de
+  // toutes les filiales, filtrables par filiale / fixe-mobile / statut /
+  // gravité, affichées en cartes.
+  { to: "/reserves", label: "Réserves & Plan d'action", icon: IconAlert },
 ];
 
 export default function Sidebar() {
@@ -172,20 +175,13 @@ export default function Sidebar() {
           </NavLink>
         ))}
 
-        {user?.voitToutesFiliales && (
-          <>
-            <div className="nav-section-label">Administration</div>
-            <NavLink
-              to="/groupe"
-              title="Vue consolidée Groupe"
-              className={({ isActive }) =>
-                `nav-item${isActive ? " active" : ""}`
-              }
-            >
-              <IconUsers />
-              <span className="nav-label">Vue consolidée Groupe</span>
-            </NavLink>
-          </>
+        {/* L'étiquette "Administration" ne servait avant qu'à introduire
+            "Vue consolidée Groupe" (supprimée). Affichée maintenant selon les
+            mêmes permissions que les liens qu'elle introduit ci-dessous,
+            sinon elle pouvait apparaître seule, sans rien en dessous. */}
+        {(user?.hasPermission("utilisateurs.manage") ||
+          user?.hasPermission("equipements.create")) && (
+          <div className="nav-section-label">Administration</div>
         )}
         {user?.hasPermission("utilisateurs.manage") && (
           <NavLink
