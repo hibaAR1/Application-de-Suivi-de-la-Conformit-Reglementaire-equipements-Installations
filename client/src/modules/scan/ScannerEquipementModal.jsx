@@ -1,3 +1,36 @@
+/*
+ * ============================================================================
+ * FENÊTRE : Scanner un équipement ou un engin
+ * ============================================================================
+ *
+ * RÔLE
+ *   Fenêtre ouverte par le bouton "Scanner QR Code" du menu latéral. Elle
+ *   identifie un équipement ou un engin de deux façons :
+ *   1. en scannant son QR Code avec la caméra (librairie html5-qrcode, la
+ *      même que le scanner plein écran ScanSimule.jsx) ;
+ *   2. en tapant son identifiant à la main, si la caméra est indisponible ou
+ *      mal cadrée. Format : [FILIALE]-[SITE]-[TYPE]-[SEQ]
+ *      (ex. CTM-105-CHAR-01, généré par EquipementController::store()).
+ *
+ * RÉSULTAT
+ *   Une fois l'identifiant validé (scanné ou tapé), la fenêtre est remplacée
+ *   par la Fiche Technique de l'élément trouvé : FicheTechniqueModal pour un
+ *   équipement, FicheTechniqueEnginModal pour un engin. Ce n'est pas le
+ *   formulaire de contrôle terrain (/scan/:id), qui sert au vrai flux de
+ *   contrôle.
+ *
+ * FORMATS DE TEXTE LUS (voir analyserTexte et extraireIdentifiant)
+ *   - Équipement : le QR de la Fiche Technique encode une URL complète
+ *     (`${origin}/scan/{id}`) ; on garde alors seulement le dernier segment
+ *     du chemin. Un identifiant tapé à la main est déjà "nu".
+ *   - Engin : le QR est préfixé par "ENGIN:" (ex. "ENGIN:MP-MP01-GRUE-01").
+ *     Un engin et un équipement peuvent avoir exactement le même
+ *     identifiant : le préfixe indique dans quelle table chercher.
+ *   - Identifiant tapé sans préfixe : recherche d'abord parmi les
+ *     équipements, puis parmi les engins. Taper "ENGIN:..." force la
+ *     recherche dans les engins.
+ * ============================================================================
+ */
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Html5QrcodeScanner } from "html5-qrcode";
@@ -6,8 +39,10 @@ import { useEngins } from "../../context/EnginsContext";
 import FicheTechniqueModal from "../equipements/FicheTechniqueModal";
 import FicheTechniqueEnginModal from "../engins/FicheTechniqueEnginModal";
 
+// Identifiant du conteneur HTML dans lequel la caméra est affichée.
 const CONTENEUR_ID = "lecteur-qr-sidebar";
 
+// --- Styles de la fenêtre (fond assombri + carte centrée) ---
 const overlayStyle = {
   position: "fixed",
   inset: 0,
@@ -29,31 +64,11 @@ const cardStyle = {
   padding: 24,
 };
 
-// Popup "Scanner un équipement", ouverte depuis le bouton "Scanner QR Code"
-// de la sidebar (sous le sélecteur de filiale). Utilise la même librairie
-// caméra que le scanner plein écran existant (html5-qrcode, voir
-// ScanSimule.jsx sur /scanner), embarquée ici dans un cadre plus petit,
-// avec en repli la saisie manuelle de l'identifiant si la caméra n'est pas
-// disponible ou mal cadrée — au format [FILIALE]-[SITE]-[TYPE]-[SEQ]
-// (ex. CTM-105-CHAR-01, voir EquipementController::store() côté serveur).
-//
-// Une fois l'identifiant validé (scanné ou tapé), on affiche directement la
-// Fiche Technique (même composant que le bouton "Étiquette QR" de la liste
-// des équipements, même style dans toute l'app) — pas le formulaire de
-// contrôle terrain (/scan/:id → MobileControl), réservé au vrai flux de
-// contrôle.
-// Le QR code généré par la Fiche Technique (voir FicheTechniqueModal.jsx,
-// `valeurQr`) encode une URL complète — `${origin}/scan/{id}` — pas juste
-// l'identifiant tout seul. Un identifiant tapé à la main, lui, est déjà nu.
-// On gère donc les deux cas : si le texte scanné est une URL, on ne garde
-// que son dernier segment de chemin.
-//
-// Les QR codes des ENGINS (voir FicheTechniqueEnginModal.jsx) sont préfixés par
-// "ENGIN:" (ex. "ENGIN:MP-MP01-GRUE-01"), car un engin et un équipement peuvent
-// avoir exactement le même identifiant. Le préfixe indique de quelle table il
-// s'agit. Pour un identifiant tapé à la main sans préfixe, on cherche d'abord
-// parmi les équipements, puis parmi les engins ; en cas de doublon, taper
-// "ENGIN:..." force la recherche dans les engins.
+// ------------------------------------------------------------------
+// ANALYSE du texte scanné ou tapé
+// ------------------------------------------------------------------
+// Renvoie le type cherché ("engin" si le texte commence par "ENGIN:", sinon
+// "auto" : à déterminer) et l'identifiant en majuscules.
 function analyserTexte(texteBrut) {
   const texte = texteBrut.trim();
   if (texte.toUpperCase().startsWith("ENGIN:")) {
@@ -62,6 +77,8 @@ function analyserTexte(texteBrut) {
   return { type: "auto", ref: extraireIdentifiant(texte) };
 }
 
+// Si le texte est une URL (QR d'un équipement), garde le dernier segment du
+// chemin ; sinon le texte est déjà l'identifiant.
 function extraireIdentifiant(texteBrut) {
   const texte = texteBrut.trim();
   try {
@@ -73,6 +90,9 @@ function extraireIdentifiant(texteBrut) {
   }
 }
 
+// ------------------------------------------------------------------
+// COMPOSANT
+// ------------------------------------------------------------------
 export default function ScannerEquipementModal({ onClose }) {
   const { getByRef } = useEquipements();
   const { getEnginByRef } = useEngins();
@@ -81,8 +101,16 @@ export default function ScannerEquipementModal({ onClose }) {
   // { type: "equipement" | "engin", ref } une fois l'identifiant validé.
   const [trouve, setTrouve] = useState(null);
   const [etatCamera, setEtatCamera] = useState("attente"); // attente | actif | indisponible
+  // Évite de traiter plusieurs fois le même QR : la caméra le détecte à
+  // chaque image tant qu'il reste devant elle.
   const dejaTraite = useRef(false);
 
+  // ------------------------------------------------------------------
+  // RECHERCHE de l'élément correspondant à l'identifiant
+  // ------------------------------------------------------------------
+  // Avec le préfixe "ENGIN:", on cherche seulement parmi les engins. Sinon :
+  // d'abord les équipements, puis les engins. Aucun résultat : message
+  // d'erreur.
   function traiterIdentifiant(refBrute) {
     const { type, ref } = analyserTexte(refBrute);
     if (!ref) {
@@ -106,19 +134,19 @@ export default function ScannerEquipementModal({ onClose }) {
     setTrouve(cible);
   }
 
-  // Caméra terrain : ne s'initialise que tant qu'aucun équipement n'a été
-  // trouvé (sinon la Fiche Technique remplace complètement cette popup, et
-  // on n'a plus besoin de la caméra).
+  // ------------------------------------------------------------------
+  // CAMÉRA : démarrage et arrêt du scanner
+  // ------------------------------------------------------------------
+  // Le scanner ne tourne que tant qu'aucun élément n'a été trouvé : ensuite
+  // la Fiche Technique remplace cette fenêtre et la caméra n'est plus utile.
   //
-  // React (StrictMode, en développement uniquement) monte l'effet, le
-  // nettoie, puis le remonte aussitôt pour vérifier qu'il est bien
-  // "rejouable". Html5QrcodeScanner insère ses propres boutons/éléments
-  // dans le conteneur et son scanner.clear() est asynchrone : si un second
-  // scanner démarre avant que le premier ait fini de se nettoyer, on se
-  // retrouve avec deux jeux de boutons "Stop Scanning" et une erreur
-  // "removeChild" quand l'un des deux essaie de retirer un nœud déjà
-  // supprimé par l'autre. On vide donc le conteneur nous-mêmes avant de
-  // créer un nouveau scanner, et à nouveau si le clear() échoue.
+  // Html5QrcodeScanner ajoute ses propres boutons dans le conteneur et son
+  // scanner.clear() est asynchrone. Si un second scanner démarre avant que
+  // le premier ait fini de se nettoyer, on obtient deux jeux de boutons
+  // "Stop Scanning" et une erreur "removeChild". On vide donc le conteneur
+  // nous-mêmes avant de créer un scanner, et de nouveau si clear() échoue.
+  // (Ce cas se produit en développement avec React StrictMode, qui monte
+  // l'effet deux fois de suite ; StrictMode est retiré dans main.jsx.)
   useEffect(() => {
     if (trouve) return undefined;
 
@@ -138,7 +166,7 @@ export default function ScannerEquipementModal({ onClose }) {
           traiterIdentifiant(texteDecode);
         },
         () => {
-          // Appelé à chaque frame sans QR détecté — signe que la caméra tourne bien.
+          // Appelé à chaque image sans QR détecté : signe que la caméra tourne bien.
           setEtatCamera((e) => (e === "attente" ? "actif" : e));
         },
       );
@@ -155,12 +183,16 @@ export default function ScannerEquipementModal({ onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trouve]);
 
-  // Portail vers document.body : ce composant est monté depuis la sidebar
-  // (bouton "Scanner QR Code"), qui fixe elle-même une couleur de texte
-  // claire pour son propre fond sombre (.sidebar { color: #EFE9DF }). Sans
-  // portail, la popup héritait de ce texte clair alors que son fond à elle
-  // est clair aussi — texte quasi invisible. Le portail sort la popup de
-  // l'arbre DOM de la sidebar, donc plus aucun héritage de style parasite.
+  // ------------------------------------------------------------------
+  // AFFICHAGE
+  // ------------------------------------------------------------------
+  // Les deux rendus passent par un portail vers document.body : ce composant
+  // est monté depuis le menu latéral, qui impose un texte clair (fond
+  // sombre : .sidebar { color: #EFE9DF }). Sans portail, la fenêtre (fond
+  // clair) hériterait de ce texte clair et deviendrait quasi illisible. Le
+  // portail la sort de l'arbre DOM du menu, donc sans style hérité.
+
+  // Élément trouvé : on affiche sa Fiche Technique (équipement ou engin).
   if (trouve) {
     return createPortal(
       trouve.type === "engin" ? (
@@ -172,14 +204,18 @@ export default function ScannerEquipementModal({ onClose }) {
     );
   }
 
+  // Validation du formulaire de saisie manuelle.
   function accéder(e) {
     e.preventDefault();
     traiterIdentifiant(identifiant);
   }
 
+  // Sinon : la fenêtre de scan. Un clic sur le fond assombri la ferme ; un
+  // clic dans la carte ne la ferme pas.
   return createPortal(
     <div style={overlayStyle} onClick={onClose}>
       <div style={cardStyle} onClick={(e) => e.stopPropagation()}>
+        {/* Titre et bouton de fermeture */}
         <div
           style={{
             display: "flex",
@@ -200,6 +236,8 @@ export default function ScannerEquipementModal({ onClose }) {
           </button>
         </div>
 
+        {/* Zone caméra : pastille d'état (initialisation / actif / indisponible)
+            puis flux vidéo du scanner */}
         <div
           style={{
             border: "1px solid var(--border)",
@@ -253,6 +291,7 @@ export default function ScannerEquipementModal({ onClose }) {
           <div id={CONTENEUR_ID} style={{ maxWidth: 360, margin: "0 auto" }} />
         </div>
 
+        {/* Saisie manuelle de l'identifiant (repli si la caméra ne marche pas) */}
         <form onSubmit={accéder}>
           <div className="field">
             <label>
@@ -272,6 +311,7 @@ export default function ScannerEquipementModal({ onClose }) {
             </div>
           </div>
 
+          {/* Message d'erreur : identifiant vide ou introuvable */}
           {erreur && (
             <div
               style={{
@@ -285,6 +325,7 @@ export default function ScannerEquipementModal({ onClose }) {
             </div>
           )}
 
+          {/* Aide : format attendu des identifiants */}
           <div
             style={{
               background: "rgba(212,175,55,0.08)",

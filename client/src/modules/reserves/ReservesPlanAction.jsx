@@ -1,3 +1,24 @@
+/*
+ * ============================================================================
+ * PAGE : Réserves & Plan d'action  (route /reserves)
+ * ============================================================================
+ *
+ * RÔLE
+ *   Liste unique de toutes les réserves (défauts à corriger relevés lors des
+ *   contrôles), des équipements ET des engins. Chaque réserve est une carte
+ *   avec son statut, sa gravité, sa filiale, sa nature et son délai de levée.
+ *
+ * FONCTIONNEMENT
+ *   1. listerReserves() rassemble les réserves des équipements et des engins
+ *      en une seule liste.
+ *   2. Les filtres (origine, filiale, groupe, type, statut, gravité) et la
+ *      filiale active du menu réduisent cette liste.
+ *   3. Les réserves sont triées par délai de levée, la plus proche en
+ *      premier.
+ *   4. "Voir équipement" / "Voir engin" ouvre la fiche détaillée
+ *      correspondante (EquipementModal ou EnginModal).
+ * ============================================================================
+ */
 import { useMemo, useState } from "react";
 import Plate from "../../components/Plate";
 import Badge from "../../components/Badge";
@@ -8,27 +29,35 @@ import { useEngins } from "../../context/EnginsContext";
 import { useFilialeTheme } from "../../context/FilialeThemeContext";
 import { statutEcheance } from "../dashboard/utils/echeance";
 
+// Couleur du badge selon la gravité de la réserve.
 const CRITICITE_TONE = {
   Mineure: "success",
   Majeure: "warning",
   Critique: "danger",
 };
+// Couleur du badge selon le statut de la réserve.
 const STATUT_TONE = {
   Ouverte: "warning",
   "En cours": "warning",
   Clôturée: "success",
 };
 
+// Date au format français (JJ/MM/AAAA), ou "—" si elle est absente.
 function formaterDate(date) {
   if (!date) return "—";
   return new Date(date).toLocaleDateString("fr-FR");
 }
 
+// ------------------------------------------------------------------
+// LISTE UNIQUE des réserves
+// ------------------------------------------------------------------
 // Aplatit (équipements + engins) -> contrôles -> réserves en une seule liste de
 // cartes, pour pouvoir filtrer/afficher toutes les réserves ensemble. Les
 // équipements et les engins restent dans des tables séparées en base
 // (reserve / reserve_engin) : seule cette page les affiche ensemble.
 // "origine" dit de quelle table vient la réserve ("equipement" ou "engin").
+// "cle" est unique (préfixée par l'origine) car un même numéro de réserve peut
+// exister dans les deux tables.
 function listerReserves(equipements, engins) {
   const liste = [];
   for (const eq of equipements) {
@@ -62,7 +91,11 @@ function listerReserves(equipements, engins) {
   return liste;
 }
 
+// ------------------------------------------------------------------
+// COMPOSANT
+// ------------------------------------------------------------------
 export default function ReservesPlanAction() {
+  // Données : équipements, engins, listes de référence et filiales.
   const {
     equipements,
     typesEquipement,
@@ -72,6 +105,7 @@ export default function ReservesPlanAction() {
   } = useEquipements();
   const { engins, chargement: chargementEn, erreur: erreurEn } = useEngins();
   const { filiales, onglets, filialeActive } = useFilialeTheme();
+  // Valeurs des filtres ("" = pas de filtre).
   const [origineFiltre, setOrigineFiltre] = useState("");
   const [filialeFiltre, setFilialeFiltre] = useState("");
   const [categorieFiltre, setCategorieFiltre] = useState("");
@@ -81,6 +115,7 @@ export default function ReservesPlanAction() {
   // { origine: "equipement" | "engin", id } : fiche ouverte par "Voir ...".
   const [fichierOuvert, setFichierOuvert] = useState(null);
 
+  // Chargement ou erreur de l'une OU l'autre des deux sources de données.
   const chargement = chargementEq || chargementEn;
   const erreur = erreurEq || erreurEn;
 
@@ -93,21 +128,26 @@ export default function ReservesPlanAction() {
     return Array.from(set);
   }, [typesEquipement, groupesEquipement]);
 
+  // Toutes les réserves, recalculées seulement si les données changent.
   const toutes = useMemo(
     () => listerReserves(equipements, engins),
     [equipements, engins],
   );
 
+  // Réserves après application des filtres, triées par délai de levée (la
+  // plus proche en premier ; celles sans délai passent en premier aussi).
   const filtrees = useMemo(() => {
     return toutes
       .filter(({ origine, materiel, reserve }) => {
         if (origineFiltre && origine !== origineFiltre) return false;
+        // Filiale choisie dans le menu latéral (sauf "Groupe" = toutes).
         if (
           filialeActive &&
           filialeActive !== "GROUPE" &&
           materiel.filiale?.code !== filialeActive
         )
           return false;
+        // Filtre "filiale" propre à cette page.
         if (filialeFiltre && materiel.filiale?.code !== filialeFiltre)
           return false;
         if (
@@ -141,6 +181,7 @@ export default function ReservesPlanAction() {
 
   return (
     <>
+      {/* En-tête : titre et nombre de réserves affichées */}
       <div className="topbar">
         <div>
           <div className="eyebrow">Suivi des réserves</div>
@@ -154,6 +195,7 @@ export default function ReservesPlanAction() {
       </div>
 
       <div className="content">
+        {/* Barre de filtres : origine, filiale, groupe, type, statut, gravité */}
         <div
           style={{
             display: "flex",
@@ -243,6 +285,7 @@ export default function ReservesPlanAction() {
           </div>
         </div>
 
+        {/* Erreur de chargement */}
         {erreur && (
           <Plate
             style={{ padding: 16, color: "var(--danger)", marginBottom: 16 }}
@@ -251,6 +294,8 @@ export default function ReservesPlanAction() {
           </Plate>
         )}
 
+        {/* Trois cas : chargement en cours, aucun résultat, ou la liste des
+            cartes (une carte par réserve) */}
         {chargement ? (
           <Plate style={{ padding: 16 }}>Chargement...</Plate>
         ) : filtrees.length === 0 ? (
@@ -267,6 +312,8 @@ export default function ReservesPlanAction() {
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {filtrees.map(({ origine, cle, idMateriel, materiel, reserve }) => {
               const estEngin = origine === "engin";
+              // En retard : réserve non clôturée dont le délai de levée est
+              // dépassé.
               const enRetard =
                 reserve.statut !== "Clôturée" &&
                 reserve.delai_levee &&
@@ -292,6 +339,8 @@ export default function ReservesPlanAction() {
                         marginBottom: 8,
                       }}
                     >
+                      {/* Badges : statut, ENGIN (si engin), groupe, gravité,
+                          filiale, retard */}
                       <Badge tone={STATUT_TONE[reserve.statut] ?? "warning"}>
                         {reserve.statut}
                       </Badge>
@@ -336,6 +385,7 @@ export default function ReservesPlanAction() {
                     </div>
                   </div>
 
+                  {/* Ouvre la fiche de l'équipement ou de l'engin concerné */}
                   <button
                     type="button"
                     className="btn btn-secondary"
@@ -353,6 +403,7 @@ export default function ReservesPlanAction() {
         )}
       </div>
 
+      {/* Fiche détaillée ouverte par "Voir ..." (selon l'origine) */}
       {fichierOuvert?.origine === "equipement" && (
         <EquipementModal
           id={fichierOuvert.id}

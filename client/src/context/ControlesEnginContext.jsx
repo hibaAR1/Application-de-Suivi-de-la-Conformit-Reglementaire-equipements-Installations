@@ -12,13 +12,33 @@ import {
 } from "../utils/api";
 import { useAuth } from "./AuthContext";
 
-// Contrôles / réserves des ENGINS (tables "controle_engin" / "reserve_engin",
-// séparées de celles des équipements). Même fonctionnement que
-// ControlesContext ; les constantes (criticités, résultats, délais) restent
-// celles des équipements, pour une seule source de vérité côté écran.
+/*
+ * ============================================================================
+ * CONTEXTE : ControlesEnginContext
+ * ============================================================================
+ *
+ * RÔLE
+ *   Garde en mémoire les contrôles et les réserves des ENGINS (tables
+ *   "controle_engin" / "reserve_engin", séparées de celles des équipements)
+ *   et fournit aux écrans les opérations pour les gérer.
+ *   Même fonctionnement que ControlesContext ; les constantes (criticités,
+ *   résultats, délais) restent celles des équipements, pour une seule source
+ *   de vérité côté écran.
+ *
+ * CE QUE LE CONTEXTE FOURNIT (via useControlesEngin())
+ *   - Données : controles, chargement, erreur
+ *   - Lecture : reservesDeEngin, rafraichir
+ *   - Écriture : ajouterControleEngin, leverReserveEngin,
+ *     marquerReserveEnginEnCours
+ * ============================================================================
+ */
 
+// ------------------------------------------------------------------
+// NORMALISATION des données du serveur
+// ------------------------------------------------------------------
 // Le backend renvoie du snake_case (id_engin, date_controle...) avec un
-// tableau "reserves" ; l'écran attend du camelCase et une réserve par contrôle.
+// tableau "reserves" ; l'écran attend du camelCase et une réserve par contrôle
+// (on garde donc seulement la première).
 function normaliserControleEngin(c) {
   const premiereReserve =
     c.reserves && c.reserves.length > 0 ? c.reserves[0] : null;
@@ -53,6 +73,9 @@ export function ControlesEnginProvider({ children }) {
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState(null);
 
+  // ------------------------------------------------------------------
+  // CHARGEMENT de la liste
+  // ------------------------------------------------------------------
   const rafraichir = useCallback(async () => {
     setChargement(true);
     try {
@@ -76,8 +99,12 @@ export function ControlesEnginProvider({ children }) {
     }
   }, [token, rafraichir]);
 
-  // Saisie d'un contrôle d'engin : le backend calcule lui-même la
-  // prochaine échéance à partir de la périodicité de l'engin.
+  // ------------------------------------------------------------------
+  // AJOUT d'un contrôle (avec sa réserve éventuelle)
+  // ------------------------------------------------------------------
+  // Le backend calcule lui-même la prochaine échéance à partir de la
+  // périodicité de l'engin. Les données partent en FormData car le rapport
+  // peut être un fichier PDF.
   async function ajouterControleEngin({
     enginRef,
     dateControle,
@@ -93,6 +120,7 @@ export function ControlesEnginProvider({ children }) {
     fd.append("resultat_global", resultat);
     if (rapport) fd.append("rapport", rapport); // fichier PDF réel, si fourni
 
+    // La réserve n'est envoyée que si le résultat est "Favorable avec réserves".
     if (resultat === "Favorable avec réserves" && reserveInfo) {
       fd.append("reserves[0][nature_reserve]", reserveInfo.nature);
       fd.append("reserves[0][niveau_criticite]", reserveInfo.criticite);
@@ -107,13 +135,18 @@ export function ControlesEnginProvider({ children }) {
         fd.append("reserves[0][delai_levee]", reserveInfo.delaiLevee);
     }
 
+    // Le nouveau contrôle est ajouté en tête de liste.
     const nouveau = await creerControleEngin(fd);
     const normalise = normaliserControleEngin(nouveau);
     setControles((prev) => [normalise, ...prev]);
     return normalise;
   }
 
-  // "Justificatif de levée" + "Date de levée effective".
+  // ------------------------------------------------------------------
+  // LEVÉE d'une réserve (passage à "Clôturée")
+  // ------------------------------------------------------------------
+  // Envoie le "Justificatif de levée" (fichier) et la "Date de levée
+  // effective", puis recharge la liste.
   async function leverReserveEngin(
     controleId,
     { fichier, dateLeveeEffective },
@@ -130,6 +163,9 @@ export function ControlesEnginProvider({ children }) {
     await rafraichir();
   }
 
+  // ------------------------------------------------------------------
+  // PASSAGE "En cours" d'une réserve
+  // ------------------------------------------------------------------
   // Passe une réserve "Ouverte" à "En cours". Prend l'id de la RÉSERVE
   // (pas celui du contrôle).
   async function marquerReserveEnginEnCours(idReserve) {
@@ -139,10 +175,12 @@ export function ControlesEnginProvider({ children }) {
     await rafraichir();
   }
 
+  // Les contrôles d'un engin qui portent une réserve.
   function reservesDeEngin(enginRef) {
     return controles.filter((c) => c.enginRef === enginRef && c.reserve);
   }
 
+  // Tout ce que les écrans peuvent utiliser via useControlesEngin().
   const value = {
     controles,
     chargement,
@@ -160,6 +198,8 @@ export function ControlesEnginProvider({ children }) {
   );
 }
 
+// Raccourci d'accès au contexte, avec une erreur claire en cas d'oubli du
+// <ControlesEnginProvider> autour de l'application.
 export function useControlesEngin() {
   const ctx = useContext(ControlesEnginContext);
   if (!ctx)

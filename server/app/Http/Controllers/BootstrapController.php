@@ -16,25 +16,39 @@ use App\Models\Site;
 use App\Http\Resources\TypeEquipementResource;
 use App\Models\TypeEquipement;
 
+/*
+ * ============================================================================
+ * CONTRÔLEUR : BootstrapController  (route GET /api/donnees-initiales)
+ * ============================================================================
+ *
+ * RÔLE
+ *   Regroupe en UNE seule requête HTTP toutes les données chargées à
+ *   l'ouverture de l'application, au lieu d'une requête par liste. Le
+ *   frontend remplit ensuite ses contextes (équipements, engins, listes de
+ *   référence) avec cette réponse.
+ *
+ * DONNÉES RENVOYÉES
+ *   - equipements, engins : avec filiale, site, type, contrôles et réserves
+ *   - filiales, sites, typesEquipement, groupesEquipement : listes de
+ *     référence utilisées par les filtres et les formulaires
+ * ============================================================================
+ */
 class BootstrapController extends Controller
 {
-    // Regroupe en une seule requête HTTP toutes les données chargées à
-    // l'ouverture de l'application (équipements, engins, filiales, sites, types,
-    // groupes), au lieu de requêtes séparées.
-    //
-    // (La lenteur observée pendant le diagnostic venait en réalité du
-    // throttling "3G" resté activé dans l'onglet Network de Chrome DevTools
-    // — pas du serveur. Le bloc de mesure temporaire a été retiré.)
     public function index()
     {
         return [
+            // --- Équipements ---
             'equipements' => EquipementResource::collection(
                 Equipement::with(['filiale', 'site', 'typeEquipement', 'controles.reserves'])->get()
             ),
-            // Engins (table "engin" séparée), avec leurs contrôles et réserves.
+            // --- Engins ---
+            // Table "engin" séparée de "equipement", avec leurs contrôles et
+            // réserves.
             'engins' => EnginResource::collection(
                 Engin::with(['filiale', 'site', 'typeEquipement', 'controles.reserves'])->get()
             ),
+            // --- Listes de référence (triées par libellé quand c'est utile) ---
             'filiales' => FilialeResource::collection(Filiale::all()),
             'sites' => SiteResource::collection(Site::orderBy('libelle')->get()),
             'typesEquipement' => TypeEquipementResource::collection(TypeEquipement::orderBy('libelle')->get()),

@@ -9,10 +9,29 @@ import { apiFetch } from "../utils/api";
 import { useAuth } from "./AuthContext";
 import { useEquipements } from "./EquipementsContext";
 
-// Engins (matériel mobile) : table "engin", séparée de "equipement" côté
-// serveur. Ce contexte gère leur liste et leurs opérations (création,
-// modification, suppression, rapports, assistant). Les listes communes
-// (filiales, sites, types) viennent de EquipementsContext.
+/*
+ * ============================================================================
+ * CONTEXTE : EnginsContext
+ * ============================================================================
+ *
+ * RÔLE
+ *   Garde en mémoire la liste des ENGINS (matériel mobile, table "engin",
+ *   séparée de "equipement" côté serveur) et fournit à tous les écrans les
+ *   opérations pour les gérer.
+ *
+ * CE QUE LE CONTEXTE FOURNIT (via useEngins())
+ *   - Données : engins, chargement, erreur
+ *   - Lecture : getEnginByRef, rafraichirEngins
+ *   - Écriture : creerEngin, modifierEngin, modifierDetailsEngin,
+ *     supprimerEngin
+ *   - Rapports PDF : recupererRapportsEngin, ajouterRapportEngin
+ *   - Assistant IA : genererAssistantEngin
+ *
+ * Les listes communes (filiales, sites, types) viennent de
+ * EquipementsContext. Les contrôles et réserves des engins sont gérés dans
+ * ControlesEnginContext.
+ * ============================================================================
+ */
 const EnginsContext = createContext(null);
 
 export function EnginsProvider({ children }) {
@@ -22,6 +41,9 @@ export function EnginsProvider({ children }) {
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState(null);
 
+  // ------------------------------------------------------------------
+  // CHARGEMENT de la liste
+  // ------------------------------------------------------------------
   const rafraichirEngins = useCallback(() => {
     return apiFetch("/engins")
       .then((liste) => {
@@ -42,6 +64,10 @@ export function EnginsProvider({ children }) {
     rafraichirEngins().finally(() => setChargement(false));
   }, [isAuthenticated, rafraichirEngins]);
 
+  // ------------------------------------------------------------------
+  // LECTURE : retrouve un engin par son identifiant (sans tenir compte des
+  // majuscules ni des espaces autour)
+  // ------------------------------------------------------------------
   function getEnginByRef(ref) {
     if (!ref) return null;
     return (
@@ -53,8 +79,12 @@ export function EnginsProvider({ children }) {
     );
   }
 
+  // ------------------------------------------------------------------
+  // CRÉATION d'un engin
+  // ------------------------------------------------------------------
   // L'identifiant et le référentiel sont générés par le serveur
-  // (voir EnginController::store).
+  // (voir EnginController::store). Le formulaire donne le code de la
+  // filiale ; le serveur attend son identifiant, d'où la recherche ci-dessous.
   async function creerEngin(donnees) {
     const filiale = filiales.find((f) => f.code === donnees.codeFiliale);
     const corps = {
@@ -76,10 +106,14 @@ export function EnginsProvider({ children }) {
       method: "POST",
       body: JSON.stringify(corps),
     });
+    // Le nouvel engin est ajouté en tête de liste.
     setEngins((prev) => [cree, ...prev]);
     return cree;
   }
 
+  // ------------------------------------------------------------------
+  // MODIFICATION complète (formulaire de modification)
+  // ------------------------------------------------------------------
   async function modifierEngin(id, donnees) {
     const filiale = donnees.codeFiliale
       ? filiales.find((f) => f.code === donnees.codeFiliale)
@@ -107,8 +141,11 @@ export function EnginsProvider({ children }) {
     return maj;
   }
 
-  // Fiche de l'engin (onglets Informations / Caractéristiques) : mise à jour
-  // partielle de quelques champs seulement.
+  // ------------------------------------------------------------------
+  // MODIFICATION partielle (fiche de l'engin)
+  // ------------------------------------------------------------------
+  // Onglets Informations / Caractéristiques : seuls quelques champs sont
+  // envoyés, on fusionne donc la réponse avec l'engin déjà en mémoire.
   async function modifierDetailsEngin(id, details) {
     const maj = await apiFetch(`/engins/${id}`, {
       method: "PUT",
@@ -120,12 +157,18 @@ export function EnginsProvider({ children }) {
     return maj;
   }
 
+  // ------------------------------------------------------------------
+  // SUPPRESSION
+  // ------------------------------------------------------------------
   // Mêmes permissions que les équipements ("equipements.delete"), réutilisées.
   async function supprimerEngin(id) {
     await apiFetch(`/engins/${id}`, { method: "DELETE" });
     setEngins((prev) => prev.filter((e) => e.id_engin !== id));
   }
 
+  // ------------------------------------------------------------------
+  // RAPPORTS PDF d'un engin
+  // ------------------------------------------------------------------
   function recupererRapportsEngin(idEngin) {
     return apiFetch(`/engins/${idEngin}/rapports`);
   }
@@ -134,6 +177,8 @@ export function EnginsProvider({ children }) {
     idEngin,
     { dateRapport, organisme, reference, constatations, fichier },
   ) {
+    // FormData car le rapport peut contenir un fichier PDF ; les champs
+    // facultatifs ne sont envoyés que s'ils sont remplis.
     const corps = new FormData();
     corps.append("date_rapport", dateRapport);
     corps.append("organisme", organisme);
@@ -147,6 +192,9 @@ export function EnginsProvider({ children }) {
     });
   }
 
+  // ------------------------------------------------------------------
+  // ASSISTANT IA : "cible" vaut "plan-action" ou "points-controle"
+  // ------------------------------------------------------------------
   async function genererAssistantEngin(idEngin, cible) {
     const { reponse } = await apiFetch(
       `/engins/${idEngin}/assistant/${cible}`,
@@ -155,6 +203,7 @@ export function EnginsProvider({ children }) {
     return reponse;
   }
 
+  // Tout ce que les écrans peuvent utiliser via useEngins().
   const value = {
     engins,
     chargement,
@@ -175,6 +224,8 @@ export function EnginsProvider({ children }) {
   );
 }
 
+// Raccourci d'accès au contexte, avec une erreur claire en cas d'oubli du
+// <EnginsProvider> autour de l'application.
 export function useEngins() {
   const ctx = useContext(EnginsContext);
   if (!ctx) {

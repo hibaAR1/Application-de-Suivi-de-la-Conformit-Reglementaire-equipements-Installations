@@ -1,3 +1,25 @@
+/*
+ * ============================================================================
+ * MENU LATÉRAL (Sidebar)
+ * ============================================================================
+ *
+ * RÔLE
+ *   Menu affiché à gauche de toutes les pages connectées.
+ *
+ * CONTENU, DE HAUT EN BAS
+ *   1. Logo et nom de la filiale active, avec le rôle de l'utilisateur
+ *   2. Sélecteur de filiale (si l'utilisateur peut en voir plusieurs)
+ *   3. Boutons "Scanner QR Code" et "Étiquettes QR" (permission
+ *      "equipements.scanner")
+ *   4. Liens principaux : tableau de bord, équipements, engins, réserves
+ *   5. Section "Administration" (selon les permissions) : utilisateurs,
+ *      rôles et permissions, données de base (groupes et types)
+ *   6. Badge de l'utilisateur connecté et bouton de déconnexion
+ *
+ * Le menu peut se replier aux icônes seules (bouton ☰) ; ce choix est
+ * mémorisé dans le navigateur.
+ * ============================================================================
+ */
 import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -16,27 +38,33 @@ import {
   IconMenu,
   IconAlert,
 } from "../../components/icons";
+
+// Liens principaux du menu (visibles par tous les utilisateurs connectés).
+// "end: true" : le lien n'est actif que sur son adresse exacte, pas sur ses
+// sous-pages.
 const NAV_ITEMS = [
   { to: "/", label: "Tableau de bord", icon: IconGrid, end: true },
   { to: "/equipements", label: "Équipements", icon: IconBox },
   { to: "/engins-mobiles", label: "Engins ", icon: IconClipboard, end: true },
   { to: "/reserves", label: "Réserves & Plan d'action", icon: IconAlert },
 ];
+
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const { filialeActive, setFilialeActive, nom, filiales, onglets } =
     useFilialeTheme();
   const location = useLocation();
-  // Avant : `${user.role} · ${user.filialeLibelle}` — le nom de la filiale
-  // (ex: "Carrières & Transport Ménara") rendait le texte trop long et il
-  // était coupé, en haut sous le logo ET en bas à côté de l'avatar (les
-  // deux endroits utilisent cette même variable). On ne garde que le rôle.
+  // Texte affiché sous le logo et à côté de l'avatar : seulement le rôle.
+  // Le nom de la filiale rendrait le texte trop long (il serait coupé aux
+  // deux endroits qui utilisent cette variable).
   const roleLabel = user ? user.role : "";
   const logo = LOGOS_FILIALE[filialeActive] ?? LOGOS_FILIALE.GROUPE;
 
-  // "Données de base" : section repliable dans la sidebar (comme dans
-  // l'exemple donné), pas une page à part avec des cartes — on reste ouvert
-  // automatiquement si on est déjà sur une de ses sous-pages.
+  // ------------------------------------------------------------------
+  // ÉTAT : section repliable "Données de base"
+  // ------------------------------------------------------------------
+  // C'est une section dépliable du menu (pas une page à part). Elle reste
+  // ouverte automatiquement quand on est sur une de ses sous-pages.
   const [donneesBaseOuvert, setDonneesBaseOuvert] = useState(
     location.pathname.startsWith("/donnees-base"),
   );
@@ -46,19 +74,23 @@ export default function Sidebar() {
     }
   }, [location.pathname]);
 
-  // Bouton "Scanner QR Code", juste sous le sélecteur de filiale (voir
-  // capture d'écran fournie) : ouvre ScannerEquipementModal.
+  // ------------------------------------------------------------------
+  // ÉTAT : fenêtres "Scanner QR Code" et "Étiquettes QR"
+  // ------------------------------------------------------------------
+  // Chacune est une fenêtre ouverte par-dessus la page (un simple état
+  // ouvert/fermé, pas une route).
   const [scanOuvert, setScanOuvert] = useState(false);
-  // Popup "Étiquettes QR" (génère/imprime plusieurs étiquettes à la fois),
-  // même principe que le scan : un état, pas une route.
   const [etiquettesQrOuvert, setEtiquettesQrOuvert] = useState(false);
-  // Repli manuel du sidebar aux icônes seules (bouton ☰) : "auto" = suit le
-  // comportement par défaut selon la largeur d'écran (replié en dessous de
-  // 940px, comme avant) ; "ouvert"/"ferme" = l'utilisateur a cliqué, et son
-  // choix gagne désormais à n'importe quelle taille d'écran. Mémorisé pour
-  // rester fixe d'une page à l'autre et après rechargement. Le bouton est
-  // toujours affiché dès le premier rendu (pas derrière une condition de
-  // chargement), donc il ne disparaît jamais pendant le chargement d'une page.
+
+  // ------------------------------------------------------------------
+  // ÉTAT : repli du menu aux icônes seules (bouton ☰)
+  // ------------------------------------------------------------------
+  // - "auto"   : suit la largeur de l'écran (replié en dessous de 940px)
+  // - "ouvert" / "ferme" : choix de l'utilisateur, prioritaire à toute
+  //   largeur d'écran
+  // Le choix est mémorisé pour rester le même d'une page à l'autre et après
+  // un rechargement. Le bouton est affiché dès le premier rendu (sans
+  // condition de chargement), donc il ne disparaît jamais.
   const [etatSidebar, setEtatSidebar] = useState(() => {
     try {
       return localStorage.getItem("sidebarEtat") || "auto";
@@ -78,9 +110,9 @@ export default function Sidebar() {
     setEtatSidebar((v) => {
       if (v === "ouvert") return "ferme";
       if (v === "ferme") return "ouvert";
-      // Premier clic depuis "auto" : on part de ce qui est visuellement
-      // affiché actuellement (replié en dessous de 940px de large) pour que
-      // le bouton fasse l'inverse de ce qu'on voit à l'écran.
+      // Premier clic depuis "auto" : on part de ce qui est affiché à
+      // l'écran (replié en dessous de 940px de large) pour que le bouton
+      // fasse l'inverse de ce qu'on voit.
       return window.innerWidth < 940 ? "ouvert" : "ferme";
     });
   };
@@ -94,6 +126,7 @@ export default function Sidebar() {
 
   return (
     <aside className={`sidebar${classeSidebar}`}>
+      {/* 1. Logo, nom de la filiale et rôle, avec le bouton de repli */}
       <div className="brand">
         <button
           type="button"
@@ -112,6 +145,8 @@ export default function Sidebar() {
         </div>
       </div>
 
+      {/* 2. Sélecteur de filiale : affiché seulement si l'utilisateur a accès
+          à plusieurs filiales */}
       {onglets.length > 1 && (
         <select
           value={filialeActive ?? ""}
@@ -129,10 +164,9 @@ export default function Sidebar() {
         </select>
       )}
 
-      {/* Le Référent HSE filiale n'a pas le droit de scanner (demande
-          client) : bouton visible seulement pour qui a la permission
-          "equipements.scanner" (Super Admin, Administrateur SMI Holding,
-          Technicien terrain — voir PermissionSeeder.php). */}
+      {/* 3. Scanner et étiquettes QR : ces deux boutons ne sont visibles que
+          pour les utilisateurs qui ont la permission "equipements.scanner"
+          (attribution des permissions aux rôles : voir PermissionSeeder.php). */}
       {user?.hasPermission("equipements.scanner") && (
         <>
           <button
@@ -156,8 +190,9 @@ export default function Sidebar() {
             <ScannerEquipementModal onClose={() => setScanOuvert(false)} />
           )}
           {/* "Étiquettes QR" : génère et imprime les étiquettes QR Code de
-          plusieurs équipements à la fois (filtrables par filiale, groupe,
-          site, type), contrairement au scan qui lit un seul QR Code. */}
+              plusieurs équipements et engins à la fois (filtrables par
+              origine, filiale, groupe, site, type), contrairement au scan qui
+              lit un seul QR Code à la fois. */}
           <button
             type="button"
             onClick={() => setEtiquettesQrOuvert(true)}
@@ -182,6 +217,7 @@ export default function Sidebar() {
       )}
 
       <nav>
+        {/* 4. Liens principaux */}
         {NAV_ITEMS.map((item) => (
           <NavLink
             key={item.to}
@@ -195,10 +231,9 @@ export default function Sidebar() {
           </NavLink>
         ))}
 
-        {/* L'étiquette "Administration" ne servait avant qu'à introduire
-            "Vue consolidée Groupe" (supprimée). Affichée maintenant selon les
-            mêmes permissions que les liens qu'elle introduit ci-dessous,
-            sinon elle pouvait apparaître seule, sans rien en dessous. */}
+        {/* 5. Section "Administration" : le titre est affiché selon les mêmes
+            permissions que les liens qu'il introduit ci-dessous, pour ne
+            jamais apparaître seul, sans rien en dessous. */}
         {(user?.hasPermission("utilisateurs.manage") ||
           user?.hasPermission("equipements.create")) && (
           <div className="nav-section-label">Administration</div>
@@ -214,8 +249,8 @@ export default function Sidebar() {
           </NavLink>
         )}
         {/* Gestion des rôles et de leurs permissions (créer un rôle, cocher
-            ses permissions par module, ajouter de nouvelles permissions) —
-            réservé aux mêmes comptes que la page Utilisateurs. */}
+            ses permissions par module, ajouter de nouvelles permissions).
+            Réservée aux mêmes comptes que la page Utilisateurs. */}
         {user?.hasPermission("utilisateurs.manage") && (
           <NavLink
             to="/roles"
@@ -226,11 +261,11 @@ export default function Sidebar() {
             <span className="nav-label">Rôles & Permissions</span>
           </NavLink>
         )}
-        {/* "Données de base" (Groupes, Types d'équipement) : utile à quiconque
-            crée/modifie des équipements (equipements.create), pas seulement
-            à qui gère les comptes utilisateurs — sinon un Référent HSE, qui a
-            equipements.create mais pas utilisateurs.manage, ne voyait jamais
-            cette section. */}
+        {/* "Données de base" (Groupes, Types d'équipement) : visible par qui
+            crée ou modifie des équipements (equipements.create), et pas
+            seulement par qui gère les comptes utilisateurs
+            (utilisateurs.manage). Sinon un utilisateur qui n'a que
+            equipements.create ne verrait jamais cette section. */}
         {(user?.hasPermission("utilisateurs.manage") ||
           user?.hasPermission("equipements.create")) && (
           <>
@@ -282,6 +317,8 @@ export default function Sidebar() {
           </>
         )}
       </nav>
+
+      {/* 6. Utilisateur connecté et déconnexion */}
       <div className="user-badge">
         <div className="user-avatar">{user?.initiales ?? "?"}</div>
         <div style={{ minWidth: 0, flex: 1 }}>

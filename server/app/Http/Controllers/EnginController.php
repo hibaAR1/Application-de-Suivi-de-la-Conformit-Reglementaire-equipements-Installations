@@ -14,14 +14,41 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-// Engins (matériel mobile) : table "engin", séparée de "equipement". Même
-// logique que EquipementController.
+/*
+ * ============================================================================
+ * CONTRÔLEUR : EnginController  (routes /api/engins)
+ * ============================================================================
+ *
+ * RÔLE
+ *   Gère les engins (matériel mobile : grue, camion, nacelle...) : liste,
+ *   détail, création, modification, suppression. Même logique que
+ *   EquipementController, mais sur la table "engin" (indépendante de
+ *   "equipement").
+ *
+ * ACTIONS
+ *   index()   : liste des engins (filtrable par filiale)
+ *   show()    : un engin avec tous ses détails
+ *   store()   : création, avec génération automatique de l'identifiant
+ *   update()  : modification
+ *   destroy() : suppression (avec ses contrôles)
+ *
+ * La validation des données est faite en amont par les Form Requests
+ * (StoreEnginRequest / UpdateEnginRequest), et le format du JSON renvoyé
+ * est défini par EnginResource.
+ * ============================================================================
+ */
 class EnginController extends Controller
 {
+    // ------------------------------------------------------------------
+    // LISTE des engins
+    // ------------------------------------------------------------------
     public function index(Request $request)
     {
+        // Relations chargées d'avance : rattachement, type, et contrôles avec
+        // leurs réserves (nécessaires pour les écrans Engins et Réserves).
         $query = Engin::with(['filiale', 'site', 'typeEquipement', 'controles.reserves']);
 
+        // Filtre facultatif : ?id_filiale=...
         if ($request->has('id_filiale')) {
             $query->where('id_filiale', $request->id_filiale);
         }
@@ -30,6 +57,9 @@ class EnginController extends Controller
         return EnginResource::collection($query->orderByDesc('created_at')->get());
     }
 
+    // ------------------------------------------------------------------
+    // DÉTAIL d'un engin (avec en plus ses rapports PDF)
+    // ------------------------------------------------------------------
     public function show($id)
     {
         $engin = Engin::with(['filiale', 'site', 'typeEquipement', 'controles.reserves', 'rapports'])->findOrFail($id);
@@ -37,21 +67,27 @@ class EnginController extends Controller
         return new EnginResource($engin);
     }
 
+    // ------------------------------------------------------------------
+    // CRÉATION d'un engin
+    // ------------------------------------------------------------------
     public function store(StoreEnginRequest $request)
     {
         $data = $request->validated();
 
+        // Statut par défaut : "Conforme".
         $data['statut'] = $data['statut'] ?? 'Conforme';
 
         $filiale = Filiale::findOrFail($data['id_filiale']);
         $typeEquipement = TypeEquipement::findOrFail($data['id_type_equipement']);
         $site = $data['id_site'] ? Site::find($data['id_site']) : null;
 
-        // Même format d'identifiant que les équipements : [FILIALE]-[SITE]-[TYPE]-[SEQ],
+        // --- Génération de l'identifiant ---
+        // Même format que les équipements : [FILIALE]-[SITE]-[TYPE]-[SEQ],
         // ex. "CTM-105-GRUE-01". "SS" (sans site) si aucun site choisi.
         $codeSite = $site->code ?? 'SS';
         $codeType = $this->codeType($typeEquipement->libelle);
         $prefixe = "{$filiale->code}-{$codeSite}-{$codeType}-";
+        // Le numéro de séquence part du nombre d'engins qui ont déjà ce préfixe.
         $compteDepart = Engin::where('id_engin', 'like', "{$prefixe}%")->count();
 
         // Essaie plusieurs identifiants consécutifs au cas où un autre engin
@@ -75,6 +111,9 @@ class EnginController extends Controller
         abort(500, "Impossible de générer un identifiant d'engin unique, réessayez.");
     }
 
+    // ------------------------------------------------------------------
+    // Code du type pour l'identifiant
+    // ------------------------------------------------------------------
     // "GRUE" pour "Grue"... 4 lettres, sans accents ni espaces, pour le
     // segment [TYPE] de l'identifiant.
     private function codeType(string $libelle): string
@@ -85,6 +124,9 @@ class EnginController extends Controller
         return substr(str_pad($lettres, 4, 'X'), 0, 4);
     }
 
+    // ------------------------------------------------------------------
+    // MODIFICATION d'un engin
+    // ------------------------------------------------------------------
     public function update(UpdateEnginRequest $request, $id)
     {
         $engin = Engin::findOrFail($id);
@@ -96,6 +138,9 @@ class EnginController extends Controller
         return new EnginResource($engin->load(['filiale', 'site', 'typeEquipement']));
     }
 
+    // ------------------------------------------------------------------
+    // SUPPRESSION d'un engin
+    // ------------------------------------------------------------------
     public function destroy($id)
     {
         $engin = Engin::findOrFail($id);

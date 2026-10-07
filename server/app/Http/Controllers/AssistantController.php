@@ -13,8 +13,35 @@ use App\Models\Reserve;
 use App\Models\TypeEquipement;
 use Illuminate\Support\Facades\Http;
 
+/*
+ * ============================================================================
+ * CONTRÔLEUR : AssistantController  (routes /api/assistant/...)
+ * ============================================================================
+ *
+ * RÔLE
+ *   Assistant réglementaire basé sur l'IA (Gemini). Il répond aux questions
+ *   libres et génère, pour un équipement OU un engin, un plan d'action et une
+ *   liste de points de contrôle.
+ *
+ * ACTIONS
+ *   poser()                  : question libre
+ *   planAction()             : plan d'action d'un équipement
+ *   pointsControle()         : points de contrôle d'un équipement
+ *   planActionEngin()        : plan d'action d'un engin
+ *   pointsControleEngin()    : points de contrôle d'un engin
+ *
+ * FONCTIONNEMENT
+ *   Chaque action construit un texte (prompt) composé de trois parties :
+ *   les règles de l'assistant (PERIMETRE), les données utiles (application
+ *   ou fiche de l'équipement/engin), puis la demande. Ce texte est envoyé à
+ *   Gemini, et la question avec sa réponse est enregistrée dans l'historique
+ *   (table question_assistant).
+ * ============================================================================
+ */
 class AssistantController extends Controller
 {
+    // Règles de l'assistant, envoyées en début de chaque prompt : domaine de
+    // compétence, longueur des réponses, comportement hors sujet.
     private const PERIMETRE = <<<TEXT
 Tu es l'assistant réglementaire interne de Ménara Holding (application de suivi de conformité réglementaire des équipements et installations électriques).
 
@@ -28,6 +55,9 @@ Règles strictes :
 3. Ne donne jamais de conseil juridique définitif.
 TEXT;
 
+    // ------------------------------------------------------------------
+    // CONTEXTE : résumé des données de l'application (pour les questions libres)
+    // ------------------------------------------------------------------
     private function contexteDonnees(): string
     {
         $total = Equipement::count();
@@ -54,6 +84,9 @@ TEXT;
             . "- Types d'équipement et périodicité : {$types}";
     }
 
+    // ------------------------------------------------------------------
+    // CONTEXTE : fiche résumée d'UN équipement
+    // ------------------------------------------------------------------
     private function contexteEquipement(Equipement $eq): string
     {
         $type = $eq->typeEquipement;
@@ -68,6 +101,9 @@ TEXT;
             . 'Caractéristiques : ' . ($caracteristiques ?: 'non renseignées');
     }
 
+    // ------------------------------------------------------------------
+    // CONTEXTE : fiche résumée d'UN engin
+    // ------------------------------------------------------------------
     // Même résumé que contexteEquipement(), pour un ENGIN (table "engin").
     private function contexteEngin(Engin $engin): string
     {
@@ -83,17 +119,26 @@ TEXT;
             . 'Caractéristiques : ' . ($caracteristiques ?: 'non renseignées');
     }
 
-       private function genererTexte(string $prompt): string
+    // ------------------------------------------------------------------
+    // APPEL à l'IA : envoie le prompt à Gemini et renvoie le texte de réponse
+    // ------------------------------------------------------------------
+    // Quand Gemini est momentanément surchargé (erreur 503) ou limité
+    // (erreur 429), l'appel est retenté jusqu'à 3 fois, avec une pause de
+    // 1,5 seconde entre chaque tentative.
+    private function genererTexte(string $prompt): string
     {
+        // La clé d'accès est lue dans la configuration (services.gemini.key).
         $apiKey = config('services.gemini.key');
 
-        $response = Http::post(
+        $response = Http::retry(3, 1500, null, false)->post(
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={$apiKey}",
             ['contents' => [['role' => 'user', 'parts' => [['text' => $prompt]]]]]
         );
 
         $texte = $response->json('candidates.0.content.parts.0.text');
 
+        // Réponse vide ou inattendue : on garde une trace dans les logs pour
+        // pouvoir diagnostiquer, et l'utilisateur reçoit un message d'erreur.
         if (!$texte) {
             \Log::error('Assistant IA — réponse Gemini inattendue', [
                 'status' => $response->status(),
@@ -101,9 +146,20 @@ TEXT;
             ]);
         }
 
+        // Surcharge de Gemini (toujours présente après les 3 tentatives) : on
+        // l'indique clairement, car l'utilisateur n'a rien d'autre à faire que
+        // réessayer un peu plus tard.
+        if (!$texte && in_array($response->status(), [429, 503], true)) {
+            return "L'assistant IA est momentanément surchargé. Réessayez dans quelques instants.";
+        }
+
         return $texte ?? 'Une erreur est survenue, réessayez ou contactez votre Référent HSE.';
     }
 
+    // ------------------------------------------------------------------
+    // HISTORIQUE : enregistre la question, la réponse et l'utilisateur
+    // ------------------------------------------------------------------
+    // $idEquipement vaut null pour une question libre ou pour un engin.
     private function journaliser(?string $idEquipement, string $question, string $reponse, string $thematique): void
     {
         QuestionAssistant::create([
@@ -116,6 +172,9 @@ TEXT;
         ]);
     }
 
+    // ------------------------------------------------------------------
+    // QUESTION LIBRE
+    // ------------------------------------------------------------------
     public function poser(PoserRequest $request)
     {
         $data = $request->validated();
@@ -128,6 +187,9 @@ TEXT;
         return response()->json(['reponse' => $reponse]);
     }
 
+    // ------------------------------------------------------------------
+    // PLAN D'ACTION d'un équipement
+    // ------------------------------------------------------------------
     public function planAction($idEquipement)
     {
         $eq = Equipement::with(['typeEquipement', 'filiale', 'site'])->findOrFail($idEquipement);
@@ -142,6 +204,9 @@ TEXT;
         return response()->json(['reponse' => $reponse]);
     }
 
+    // ------------------------------------------------------------------
+    // POINTS DE CONTRÔLE d'un équipement
+    // ------------------------------------------------------------------
     public function pointsControle($idEquipement)
     {
         $eq = Equipement::with(['typeEquipement', 'filiale', 'site'])->findOrFail($idEquipement);
@@ -156,12 +221,15 @@ TEXT;
         return response()->json(['reponse' => $reponse]);
     }
 
-    // --- Engins (table "engin", séparée de "equipement") ---
+    // ==================================================================
+    // ENGINS (table "engin", séparée de "equipement")
+    // ==================================================================
     // question_assistant.id_equipement référence la table "equipement" : on ne
     // peut pas y stocker l'identifiant d'un engin, donc ces appels sont
     // journalisés sans identifiant d'équipement (null), avec la question qui
     // contient l'identifiant de l'engin.
 
+    // PLAN D'ACTION d'un engin
     public function planActionEngin($idEngin)
     {
         $engin = Engin::with(['typeEquipement', 'filiale', 'site'])->findOrFail($idEngin);
@@ -176,6 +244,7 @@ TEXT;
         return response()->json(['reponse' => $reponse]);
     }
 
+    // POINTS DE CONTRÔLE d'un engin
     public function pointsControleEngin($idEngin)
     {
         $engin = Engin::with(['typeEquipement', 'filiale', 'site'])->findOrFail($idEngin);
