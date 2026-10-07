@@ -46,3 +46,17 @@ export const mettreAJourReserve = (idReserve, formData) => {
   formData.append("_method", "PUT");
   return apiFetch(`/reserves/${idReserve}`, { method: "POST", body: formData });
 };
+
+// --- Engins (tables séparées : controle_engin / reserve_engin) ---
+export const getControlesEngin = () => apiFetch("/controles-engin");
+
+export const creerControleEngin = (formData) =>
+  apiFetch("/controles-engin", { method: "POST", body: formData });
+
+export const mettreAJourReserveEngin = (idReserveEngin, formData) => {
+  formData.append("_method", "PUT");
+  return apiFetch(`/reserves-engin/${idReserveEngin}`, {
+    method: "POST",
+    body: formData,
+  });
+};

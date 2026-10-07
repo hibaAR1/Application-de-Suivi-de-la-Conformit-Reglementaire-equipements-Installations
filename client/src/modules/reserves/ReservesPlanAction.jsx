@@ -2,7 +2,9 @@ import { useMemo, useState } from "react";
 import Plate from "../../components/Plate";
 import Badge from "../../components/Badge";
 import EquipementModal from "../equipements/EquipementModal";
+import EnginModal from "../engins/EnginModal";
 import { useEquipements } from "../../context/EquipementsContext";
+import { useEngins } from "../../context/EnginsContext";
 import { useFilialeTheme } from "../../context/FilialeThemeContext";
 import { statutEcheance } from "../dashboard/utils/echeance";
 
@@ -22,17 +24,38 @@ function formaterDate(date) {
   return new Date(date).toLocaleDateString("fr-FR");
 }
 
-// Aplatit équipements -> contrôles -> réserves en une seule liste de cartes,
-// pour pouvoir filtrer/afficher toutes les réserves ensemble peu importe
-// l'équipement ou le contrôle d'origine. Tout vient des équipements déjà
-// chargés en base (EquipementsContext, alimenté par /donnees-initiales) :
-// aucune donnée locale/mockée, comme demandé.
-function listerReserves(equipements) {
+// Aplatit (équipements + engins) -> contrôles -> réserves en une seule liste de
+// cartes, pour pouvoir filtrer/afficher toutes les réserves ensemble. Les
+// équipements et les engins restent dans des tables séparées en base
+// (reserve / reserve_engin) : seule cette page les affiche ensemble.
+// "origine" dit de quelle table vient la réserve ("equipement" ou "engin").
+function listerReserves(equipements, engins) {
   const liste = [];
   for (const eq of equipements) {
     for (const c of eq.controles ?? []) {
       for (const r of c.reserves ?? []) {
-        liste.push({ equipement: eq, controle: c, reserve: r });
+        liste.push({
+          origine: "equipement",
+          cle: `equipement-${r.id_reserve}`,
+          idMateriel: eq.id_equipement,
+          materiel: eq,
+          controle: c,
+          reserve: r,
+        });
+      }
+    }
+  }
+  for (const en of engins) {
+    for (const c of en.controles ?? []) {
+      for (const r of c.reserves ?? []) {
+        liste.push({
+          origine: "engin",
+          cle: `engin-${r.id_reserve_engin}`,
+          idMateriel: en.id_engin,
+          materiel: en,
+          controle: c,
+          reserve: r,
+        });
       }
     }
   }
@@ -40,30 +63,61 @@ function listerReserves(equipements) {
 }
 
 export default function ReservesPlanAction() {
-  const { equipements, chargement, erreur } = useEquipements();
+  const {
+    equipements,
+    typesEquipement,
+    groupesEquipement,
+    chargement: chargementEq,
+    erreur: erreurEq,
+  } = useEquipements();
+  const { engins, chargement: chargementEn, erreur: erreurEn } = useEngins();
   const { filiales, onglets, filialeActive } = useFilialeTheme();
+  const [origineFiltre, setOrigineFiltre] = useState("");
   const [filialeFiltre, setFilialeFiltre] = useState("");
   const [categorieFiltre, setCategorieFiltre] = useState("");
+  const [typeFiltre, setTypeFiltre] = useState("");
   const [statutFiltre, setStatutFiltre] = useState("");
   const [graviteFiltre, setGraviteFiltre] = useState("");
+  // { origine: "equipement" | "engin", id } : fiche ouverte par "Voir ...".
   const [fichierOuvert, setFichierOuvert] = useState(null);
 
-  const toutes = useMemo(() => listerReserves(equipements), [equipements]);
+  const chargement = chargementEq || chargementEn;
+  const erreur = erreurEq || erreurEn;
+
+  // Tous les groupes (pas seulement Fixe/Mobile) : ceux des types existants et
+  // ceux de la table groupe_equipement (Données de base > Groupes).
+  const groupesDisponibles = useMemo(() => {
+    const set = new Set(["Fixe", "Mobile"]);
+    typesEquipement.forEach((t) => t.categorie && set.add(t.categorie));
+    groupesEquipement.forEach((g) => set.add(g.libelle));
+    return Array.from(set);
+  }, [typesEquipement, groupesEquipement]);
+
+  const toutes = useMemo(
+    () => listerReserves(equipements, engins),
+    [equipements, engins],
+  );
 
   const filtrees = useMemo(() => {
     return toutes
-      .filter(({ equipement, reserve }) => {
+      .filter(({ origine, materiel, reserve }) => {
+        if (origineFiltre && origine !== origineFiltre) return false;
         if (
           filialeActive &&
           filialeActive !== "GROUPE" &&
-          equipement.filiale?.code !== filialeActive
+          materiel.filiale?.code !== filialeActive
         )
           return false;
-        if (filialeFiltre && equipement.filiale?.code !== filialeFiltre)
+        if (filialeFiltre && materiel.filiale?.code !== filialeFiltre)
           return false;
         if (
           categorieFiltre &&
-          equipement.type_equipement?.categorie !== categorieFiltre
+          materiel.type_equipement?.categorie !== categorieFiltre
+        )
+          return false;
+        if (
+          typeFiltre &&
+          String(materiel.id_type_equipement) !== String(typeFiltre)
         )
           return false;
         if (statutFiltre && reserve.statut !== statutFiltre) return false;
@@ -76,9 +130,11 @@ export default function ReservesPlanAction() {
       );
   }, [
     toutes,
+    origineFiltre,
     filialeActive,
     filialeFiltre,
     categorieFiltre,
+    typeFiltre,
     statutFiltre,
     graviteFiltre,
   ]);
@@ -106,6 +162,17 @@ export default function ReservesPlanAction() {
             marginBottom: 18,
           }}
         >
+          <div className="field" style={{ maxWidth: 180, marginBottom: 0 }}>
+            <select
+              value={origineFiltre}
+              onChange={(e) => setOrigineFiltre(e.target.value)}
+            >
+              <option value="">Équipements & Engins</option>
+              <option value="equipement">Équipements</option>
+              <option value="engin">Engins</option>
+            </select>
+          </div>
+
           <div className="field" style={{ maxWidth: 200, marginBottom: 0 }}>
             <select
               value={filialeFiltre}
@@ -128,9 +195,26 @@ export default function ReservesPlanAction() {
               value={categorieFiltre}
               onChange={(e) => setCategorieFiltre(e.target.value)}
             >
-              <option value="">Fixes & Mobiles</option>
-              <option value="Fixe">Fixes</option>
-              <option value="Mobile">Mobiles</option>
+              <option value="">Tous les groupes</option>
+              {groupesDisponibles.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="field" style={{ maxWidth: 220, marginBottom: 0 }}>
+            <select
+              value={typeFiltre}
+              onChange={(e) => setTypeFiltre(e.target.value)}
+            >
+              <option value="">Tous les types</option>
+              {typesEquipement.map((t) => (
+                <option key={t.id_type_equipement} value={t.id_type_equipement}>
+                  {t.libelle}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -181,14 +265,15 @@ export default function ReservesPlanAction() {
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {filtrees.map(({ equipement, reserve }) => {
+            {filtrees.map(({ origine, cle, idMateriel, materiel, reserve }) => {
+              const estEngin = origine === "engin";
               const enRetard =
                 reserve.statut !== "Clôturée" &&
                 reserve.delai_levee &&
                 statutEcheance(reserve.delai_levee) === "retard";
               return (
                 <Plate
-                  key={reserve.id_reserve}
+                  key={cle}
                   style={{
                     padding: 16,
                     display: "flex",
@@ -210,16 +295,18 @@ export default function ReservesPlanAction() {
                       <Badge tone={STATUT_TONE[reserve.statut] ?? "warning"}>
                         {reserve.statut}
                       </Badge>
+                      {estEngin && <Badge tone="warning">ENGIN</Badge>}
                       <Badge
                         tone={
-                          equipement.type_equipement?.categorie === "Mobile"
+                          materiel.type_equipement?.categorie === "Mobile"
                             ? "warning"
                             : "success"
                         }
                       >
-                        {equipement.type_equipement?.categorie === "Mobile"
-                          ? "MOBILE"
-                          : "FIXE"}
+                        {(
+                          materiel.type_equipement?.categorie ??
+                          (estEngin ? "Mobile" : "Fixe")
+                        ).toUpperCase()}
                       </Badge>
                       <Badge
                         tone={
@@ -229,7 +316,7 @@ export default function ReservesPlanAction() {
                         {reserve.niveau_criticite}
                       </Badge>
                       <Badge tone="success">
-                        {equipement.filiale?.code ?? "—"}
+                        {materiel.filiale?.code ?? "—"}
                       </Badge>
                       {enRetard && <Badge tone="danger">En retard</Badge>}
                     </div>
@@ -237,11 +324,11 @@ export default function ReservesPlanAction() {
                       {reserve.nature_reserve}
                     </div>
                     <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-                      <span className="ref">{equipement.id_equipement}</span>
+                      <span className="ref">{idMateriel}</span>
                       {" — "}
-                      {equipement.designation ?? "Sans désignation"}
+                      {materiel.designation ?? "Sans désignation"}
                       {" — "}
-                      {equipement.filiale?.libelle ?? "—"}
+                      {materiel.filiale?.libelle ?? "—"}
                       {" · Délai de levée : "}
                       <span className="mono">
                         {formaterDate(reserve.delai_levee)}
@@ -253,9 +340,11 @@ export default function ReservesPlanAction() {
                     type="button"
                     className="btn btn-secondary"
                     style={{ flexShrink: 0 }}
-                    onClick={() => setFichierOuvert(equipement.id_equipement)}
+                    onClick={() =>
+                      setFichierOuvert({ origine, id: idMateriel })
+                    }
                   >
-                    Voir équipement
+                    {estEngin ? "Voir engin" : "Voir équipement"}
                   </button>
                 </Plate>
               );
@@ -264,9 +353,15 @@ export default function ReservesPlanAction() {
         )}
       </div>
 
-      {fichierOuvert && (
+      {fichierOuvert?.origine === "equipement" && (
         <EquipementModal
-          id={fichierOuvert}
+          id={fichierOuvert.id}
+          onClose={() => setFichierOuvert(null)}
+        />
+      )}
+      {fichierOuvert?.origine === "engin" && (
+        <EnginModal
+          id={fichierOuvert.id}
           onClose={() => setFichierOuvert(null)}
         />
       )}

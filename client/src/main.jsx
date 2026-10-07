@@ -3,7 +3,9 @@ import App from "./App.jsx";
 import { AuthProvider } from "./context/AuthContext";
 import { FilialeThemeProvider } from "./context/FilialeThemeContext";
 import { ControlesProvider } from "./context/ControlesContext";
+import { ControlesEnginProvider } from "./context/ControlesEnginContext";
 import { EquipementsProvider } from "./context/EquipementsContext";
+import { EnginsProvider } from "./context/EnginsContext";
 import "./styles/tokens.css";
 
 // StrictMode retiré : en développement, il monte/démonte chaque composant
@@ -18,7 +20,11 @@ createRoot(document.getElementById("root")).render(
     <EquipementsProvider>
       <FilialeThemeProvider>
         <ControlesProvider>
-          <App />
+          <EnginsProvider>
+            <ControlesEnginProvider>
+              <App />
+            </ControlesEnginProvider>
+          </EnginsProvider>
         </ControlesProvider>
       </FilialeThemeProvider>
     </EquipementsProvider>

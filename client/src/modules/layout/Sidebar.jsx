@@ -19,7 +19,7 @@ import {
 const NAV_ITEMS = [
   { to: "/", label: "Tableau de bord", icon: IconGrid, end: true },
   { to: "/equipements", label: "Équipements", icon: IconBox },
-  { to: "/engins-mobiles", label: "Engins ", icon: IconClipboard },
+  { to: "/engins-mobiles", label: "Engins ", icon: IconClipboard, end: true },
   { to: "/reserves", label: "Réserves & Plan d'action", icon: IconAlert },
 ];
 export default function Sidebar() {

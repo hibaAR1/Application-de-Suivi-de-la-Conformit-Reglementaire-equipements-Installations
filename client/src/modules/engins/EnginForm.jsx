@@ -1,18 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Plate from "../../components/Plate";
-import NouveauTypeModal from "./NouveauTypeModal";
+import NouveauTypeModal from "../equipements/NouveauTypeModal";
 import {
   useEquipements,
   STATUTS_EQUIPEMENT,
 } from "../../context/EquipementsContext";
-import { useControles } from "../../context/ControlesContext";
+import { useEngins } from "../../context/EnginsContext";
+import { useControlesEngin } from "../../context/ControlesEnginContext";
 import { useFilialeTheme } from "../../context/FilialeThemeContext";
 import { useAuth } from "../../context/AuthContext";
 
 // Un dernier contrôle ne peut être créé automatiquement ici que pour ces deux
 // statuts (correspondance directe avec le résultat du contrôle) — "Conforme
-// avec réserve" a besoin des détails de la réserve, saisis depuis Contrôles.
+// avec réserve" a besoin des détails de la réserve, saisis depuis la fiche.
 const RESULTAT_PAR_STATUT = {
   Conforme: "Favorable",
   "Non conforme": "Défavorable",
@@ -25,36 +26,28 @@ function calculerProchaineEcheance(dateControle, periodiciteMois) {
   return d.toISOString().slice(0, 10);
 }
 
-// §3.1 du CDC — tous les champs obligatoires de la "fiche équipement",
-// sauf Identifiant et QR code qui sont générés automatiquement (non saisis ici).
-export default function EquipementForm() {
+// Formulaire de création / modification d'un ENGIN (table "engin", séparée de
+// "equipement"). Même fiche que celle des équipements.
+export default function EnginForm() {
   const { ref } = useParams(); // présent = modification, absent = création
   const navigate = useNavigate();
-  const {
-    getByRef,
-    creerEquipement,
-    modifierEquipement,
-    filiales,
-    sitesDeFiliale,
-    typesEquipement,
-    rafraichirEquipements,
-  } = useEquipements();
-  const { ajouterControle } = useControles();
+  const { filiales, sitesDeFiliale, typesEquipement } = useEquipements();
+  const { getEnginByRef, creerEngin, modifierEngin, rafraichirEngins } =
+    useEngins();
+  const { ajouterControleEngin } = useControlesEngin();
   const { filialeActive } = useFilialeTheme();
   const { user } = useAuth();
-  // Un utilisateur rattaché à une (ou plusieurs) filiale(s) précise(s) — HSE,
-  // Technicien terrain — ne doit pas pouvoir créer un équipement pour une
-  // AUTRE filiale que la sienne : le champ est verrouillé sur sa filiale.
-  // Seuls Super Admin / Administrateur SMI Holding (voitToutesFiliales)
-  // peuvent choisir librement.
+
+  // IMPORTANT : "existant" doit être déclaré AVANT filialeImposeeParContexte
+  // (qui l'utilise), sinon "Cannot access 'existant' before initialization".
+  const existant = ref ? getEnginByRef(ref) : null;
+
+  // Un utilisateur rattaché à une (ou plusieurs) filiale(s) précise(s) ne doit
+  // pas pouvoir créer un engin pour une AUTRE filiale que la sienne.
   const filialeVerrouillee = !user?.voitToutesFiliales;
-  const existant = ref ? getByRef(ref) : null;
   // Quand une filiale précise (pas "Toutes les filiales"/GROUPE) est
-  // sélectionnée dans le sidebar au moment de la création, le champ est déjà
-  // pré-rempli avec elle (voir plus bas) : on le grise aussi dans ce cas,
-  // même pour un compte qui voit toutes les filiales, pour éviter de créer
-  // par erreur un équipement dans une autre filiale que celle affichée à
-  // l'écran.
+  // sélectionnée dans le sidebar à la création, le champ est pré-rempli avec
+  // elle et grisé, pour ne pas créer un engin dans la mauvaise filiale.
   const filialeImposeeParContexte =
     !existant && !!filialeActive && filialeActive !== "GROUPE";
   const dernierControleExistant = existant?.controles?.length
@@ -111,7 +104,7 @@ export default function EquipementForm() {
   );
   const sitesDisponibles = sitesDeFiliale(form.codeFiliale);
   // Le contrôle rapide (statut → résultat direct) n'est proposé que pour
-  // Conforme/Non conforme ; "avec réserve" se fait depuis la page Contrôles.
+  // Conforme/Non conforme ; "avec réserve" se fait depuis la fiche de l'engin.
   const controleRapidePossible = form.statut in RESULTAT_PAR_STATUT;
   const prochaineEcheancePrevue = calculerProchaineEcheance(
     form.date_dernier_controle,
@@ -127,15 +120,9 @@ export default function EquipementForm() {
     setForm((f) => ({ ...f, codeFiliale, id_site: "" }));
   }
 
-  // Filet de sécurité : si la page se charge avant que "filiales" soit
-  // arrivé du serveur, la valeur par défaut ci-dessus (filiales[0]?.code)
-  // est encore vide au moment du useState() initial. Le <select> ci-dessous
-  // AFFICHE quand même la première filiale (comportement natif du
-  // navigateur quand aucune <option> ne correspond à une valeur vide), mais
-  // l'état React, lui, reste vide — et comme rien ne le distingue à l'écran,
-  // si personne ne re-clique sur le champ, la création échoue avec "le
-  // champ filiale est obligatoire" sans cause visible. Dès que la liste
-  // arrive, on resynchronise l'état avec ce qui est réellement affiché.
+  // Filet de sécurité : si la page se charge avant que "filiales" soit arrivé
+  // du serveur, la valeur initiale est vide ; on resynchronise dès que la
+  // liste arrive.
   useEffect(() => {
     if (!existant && !form.codeFiliale && filiales.length > 0) {
       setFiliale(
@@ -148,10 +135,7 @@ export default function EquipementForm() {
   }, [filiales]);
 
   // Si la filiale active du sidebar change PENDANT que ce formulaire de
-  // création est déjà ouvert (sans rechargement de page), le champ — verrouillé
-  // dans ce cas (filialeImposeeParContexte) — doit suivre ce changement, sinon
-  // il reste bloqué sur l'ancienne valeur pré-remplie (bug constaté : bascule
-  // de filiale dans le sidebar pendant que "Nouvel équipement" est ouvert).
+  // création est ouvert, le champ (grisé) doit suivre ce changement.
   useEffect(() => {
     if (filialeImposeeParContexte && form.codeFiliale !== filialeActive) {
       setFiliale(filialeActive);
@@ -159,13 +143,8 @@ export default function EquipementForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filialeActive, filialeImposeeParContexte]);
 
-  // Choix d'un type dans le <select> :
-  // contrôle avec celle du type (ou 12 par défaut si le type n'en a pas
-  // encore) — l'utilisateur peut ensuite la modifier librement, ce n'est
-  // qu'un point de départ. Ne s'exécute que sur un vrai choix de
-  // l'utilisateur (jamais au chargement initial d'une modification), donc
-  // ça n'écrase jamais une périodicité déjà enregistrée sur un équipement
-  // existant.
+  // Choix d'un type : pré-remplit aussi la périodicité avec celle du type
+  // (ou 12 par défaut) — modifiable ensuite librement.
   function choisirType(idType) {
     const type = typesEquipement.find(
       (t) => t.id_type_equipement === Number(idType),
@@ -177,11 +156,7 @@ export default function EquipementForm() {
     }));
   }
 
-  // Appelé quand la popup "+ Nouveau type" a créé le type : on le sélectionne
-  // directement dans le <select> Type de ce formulaire (même pré-remplissage
-  // de la périodicité que choisirType, mais à partir de l'objet fraîchement
-  // créé plutôt que de la liste, pour éviter un décalage si la liste n'a pas
-  // encore fini de se recharger).
+  // Appelé quand la popup "+ Nouveau type" a créé le type : on le sélectionne.
   function surNouveauType(type) {
     setForm((f) => ({
       ...f,
@@ -204,9 +179,7 @@ export default function EquipementForm() {
     if (!form.id_type_equipement)
       e.id_type_equipement = "Choisissez un type d'équipement.";
     // Les deux champs du contrôle rapide vont ensemble : si un seul des deux
-    // est rempli, l'enregistrement du contrôle serait silencieusement ignoré
-    // (voir handleSubmit) — on le signale ici clairement au lieu de laisser
-    // l'utilisateur croire que ça a marché.
+    // est rempli, l'enregistrement du contrôle serait silencieusement ignoré.
     if (
       controleRapidePossible &&
       form.date_dernier_controle &&
@@ -243,36 +216,35 @@ export default function EquipementForm() {
           ? Number(form.annee_fabrication)
           : null,
       };
-      let idEquipementCible;
+      let idEnginCible;
       if (existant) {
-        await modifierEquipement(existant.id_equipement, donnees);
-        idEquipementCible = existant.id_equipement;
+        await modifierEngin(existant.id_engin, donnees);
+        idEnginCible = existant.id_engin;
       } else {
-        const cree = await creerEquipement(donnees);
-        idEquipementCible = cree.id_equipement;
+        const cree = await creerEngin(donnees);
+        idEnginCible = cree.id_engin;
       }
 
       // Saisie rapide du dernier contrôle en même temps que la fiche, si
-      // remplie (facultatif — les contrôles restent gérables depuis Contrôles).
+      // remplie (facultatif — les contrôles restent gérables depuis la fiche).
       if (
         form.date_dernier_controle &&
         form.organisme_controle &&
         controleRapidePossible
       ) {
-        await ajouterControle({
-          equipementRef: idEquipementCible,
+        await ajouterControleEngin({
+          enginRef: idEnginCible,
           dateControle: form.date_dernier_controle,
           organisme: form.organisme_controle,
           resultat: RESULTAT_PAR_STATUT[form.statut],
         });
-        // La fiche équipement (liste, fiche technique...) lit eq.controles,
-        // une relation chargée à part dans EquipementsContext : sans ce
-        // rechargement, le contrôle qu'on vient de créer n'apparaît pas
-        // tant que la page n'est pas rafraîchie manuellement.
-        await rafraichirEquipements();
+        // La fiche (liste, détail...) lit engin.controles, chargé à part dans
+        // EnginsContext : sans ce rechargement, le contrôle qu'on vient de
+        // créer n'apparaît pas tant que la page n'est pas rafraîchie.
+        await rafraichirEngins();
       }
 
-      navigate("/equipements");
+      navigate("/engins-mobiles");
     } catch (e2) {
       setErreurApi(e2.message);
     } finally {
@@ -280,15 +252,44 @@ export default function EquipementForm() {
     }
   }
 
+  // Page de modification ouverte avant que la liste des engins soit chargée
+  // (ou référence inconnue) : on évite d'afficher un formulaire vide.
+  if (ref && !existant) {
+    return (
+      <>
+        <div className="topbar">
+          <div>
+            <div className="eyebrow">{ref}</div>
+            <h1 style={{ fontSize: "22px" }}>Modifier l'engin</h1>
+          </div>
+        </div>
+        <div className="content" style={{ maxWidth: 640 }}>
+          <Plate style={{ padding: 24 }}>
+            <p style={{ color: "var(--text-muted)" }}>
+              Engin introuvable (ou chargement en cours…).
+            </p>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => navigate("/engins-mobiles")}
+            >
+              Retour à la liste
+            </button>
+          </Plate>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <div className="topbar">
         <div>
           <div className="eyebrow">
-            {existant ? existant.id_equipement : "Nouvel équipement"}
+            {existant ? existant.id_engin : "Nouvel engin"}
           </div>
           <h1 style={{ fontSize: "22px" }}>
-            {existant ? "Modifier la fiche" : "Créer un équipement"}
+            {existant ? "Modifier l'engin" : "Créer un engin"}
           </h1>
         </div>
       </div>
@@ -357,8 +358,7 @@ export default function EquipementForm() {
 
             <div className="field">
               <label htmlFor="type">
-                Type d'équipement{" "}
-                <span style={{ color: "var(--danger)" }}>*</span>
+                Type d'engin <span style={{ color: "var(--danger)" }}>*</span>
               </label>
               <div style={{ display: "flex", gap: 8 }}>
                 <select
@@ -380,7 +380,7 @@ export default function EquipementForm() {
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  title="Créer un nouveau type d'équipement"
+                  title="Créer un nouveau type"
                   onClick={() => setNouveauTypeOuvert(true)}
                 >
                   +
@@ -654,7 +654,7 @@ export default function EquipementForm() {
             ) : (
               <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
                 Pour "Conforme avec réserve", saisissez le contrôle et la
-                réserve depuis la page Contrôles après la création.
+                réserve depuis la fiche de l'engin après la création.
               </p>
             )}
 
@@ -663,7 +663,7 @@ export default function EquipementForm() {
                 style={{
                   color: "var(--danger)",
                   fontSize: 12.5,
-                  marginBottom: 12,
+                  margin: "12px 0",
                 }}
               >
                 {erreurApi}
@@ -674,7 +674,7 @@ export default function EquipementForm() {
               style={{
                 fontSize: 11,
                 color: "var(--text-muted)",
-                marginBottom: 10,
+                margin: "16px 0 10px",
               }}
             >
               <span style={{ color: "var(--danger)" }}>*</span> champs
@@ -691,7 +691,7 @@ export default function EquipementForm() {
                   ? "Enregistrement…"
                   : existant
                     ? "Enregistrer les modifications"
-                    : "Créer l'équipement"}
+                    : "Créer l'engin"}
               </button>
               <button
                 type="button"

@@ -1,17 +1,56 @@
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { QRCodeSVG } from "qrcode.react";
 import { useEquipements } from "../../context/EquipementsContext";
+import { useEngins } from "../../context/EnginsContext";
 import { useFilialeTheme } from "../../context/FilialeThemeContext";
 
 // Lien fixe affiché sur chaque étiquette (portail interne) — pas une donnée
 // par équipement/site, donc une simple constante texte ici.
 const LIEN_PORTAIL = "smi.menara-holding.ma";
 
+// Couleur dorée FIXE des étiquettes (bordure + référence), volontairement
+// indépendante de la variable --gold (qui depuis les couleurs par filiale
+// reflète la couleur de la filiale active dans le sidebar, ex: orange pour
+// Ménara Logistique). Les étiquettes, elles, doivent toujours garder le même
+// doré/ambré, quelle que soit la filiale sélectionnée à l'écran au moment
+// de l'impression.
+const DORE_ETIQUETTE = "#A6812E";
+
 // Popup "Étiquettes QR" (sidebar, bouton sous "Scanner QR Code") : génère les
-// étiquettes QR Code de plusieurs équipements à la fois, filtrables par
-// filiale / groupe (Fixe-Mobile) / site / type, avec impression en un clic.
+// étiquettes QR Code de plusieurs équipements ET engins à la fois, filtrables
+// par origine (équipements / engins) / filiale / groupe / site / type, avec
+// impression en un clic. Le QR d'un engin est préfixé par "ENGIN:" (voir
+// FicheTechniqueEnginModal.jsx) pour que le scanner sache de quelle table il
+// s'agit ; l'étiquette d'un engin porte aussi un badge "ENGIN".
 // Contrairement au scan (qui LIT un QR Code un par un), cette popup sert à
 // IMPRIMER des étiquettes à coller sur le matériel.
+
+// À l'impression, on ne garde QUE les étiquettes : le titre, les filtres, le
+// compteur et les boutons ("etiquettes-qr-no-print") sont masqués, ainsi que
+// tout le reste de la page (menu, tableau de bord...). Pour que ça marche, la
+// popup est rendue directement dans <body> (createPortal) : on peut alors
+// cacher tous les autres enfants de <body> sans cacher la popup.
+const STYLE_IMPRESSION = `
+@media print {
+  body > *:not(.etiquettes-qr-overlay) { display: none !important; }
+  .etiquettes-qr-overlay {
+    position: static !important;
+    display: block !important;
+    background: none !important;
+    padding: 0 !important;
+  }
+  .etiquettes-qr-print-zone {
+    max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  .etiquettes-qr-no-print { display: none !important; }
+}
+`;
 
 const overlayStyle = {
   position: "fixed",
@@ -50,25 +89,54 @@ const selectStyle = {
 };
 
 export default function EtiquettesQr({ onClose }) {
-  const { equipements, typesEquipement } = useEquipements();
+  const { equipements, typesEquipement, groupesEquipement } = useEquipements();
+  const { engins } = useEngins();
   const { filiales } = useFilialeTheme();
 
+  const [origineFiltre, setOrigineFiltre] = useState("");
   const [filialeFiltre, setFilialeFiltre] = useState("");
   const [groupeFiltre, setGroupeFiltre] = useState("");
   const [siteFiltre, setSiteFiltre] = useState("");
   const [typeFiltre, setTypeFiltre] = useState("");
 
+  // Équipements et engins dans une seule liste ("origine" = table d'origine).
+  const tous = useMemo(
+    () => [
+      ...equipements.map((eq) => ({
+        origine: "equipement",
+        id: eq.id_equipement,
+        eq,
+      })),
+      ...engins.map((eq) => ({ origine: "engin", id: eq.id_engin, eq })),
+    ],
+    [equipements, engins],
+  );
+
+  // Tous les groupes (pas seulement Fixe/Mobile) : ceux des types existants et
+  // ceux de la table groupe_equipement (Données de base > Groupes).
+  const groupesDisponibles = useMemo(() => {
+    const set = new Set(["Fixe", "Mobile"]);
+    typesEquipement.forEach((t) => t.categorie && set.add(t.categorie));
+    groupesEquipement.forEach((g) => set.add(g.libelle));
+    return Array.from(set);
+  }, [typesEquipement, groupesEquipement]);
+
+  // Sites proposés dans le filtre : seulement ceux réellement utilisés par
+  // des équipements/engins de la filiale choisie (sinon tous, si aucune
+  // filiale n'est sélectionnée).
   const sitesDisponibles = useMemo(() => {
     const set = new Map();
-    equipements.forEach((eq) => {
+    tous.forEach(({ origine, eq }) => {
+      if (origineFiltre && origine !== origineFiltre) return;
       if (filialeFiltre && eq.filiale?.code !== filialeFiltre) return;
       if (eq.site?.id_site) set.set(eq.site.id_site, eq.site.libelle);
     });
     return [...set.entries()];
-  }, [equipements, filialeFiltre]);
+  }, [tous, origineFiltre, filialeFiltre]);
 
-  const equipementsFiltres = useMemo(() => {
-    return equipements.filter((eq) => {
+  const elementsFiltres = useMemo(() => {
+    return tous.filter(({ origine, eq }) => {
+      if (origineFiltre && origine !== origineFiltre) return false;
       if (filialeFiltre && eq.filiale?.code !== filialeFiltre) return false;
       if (groupeFiltre && eq.type_equipement?.categorie !== groupeFiltre)
         return false;
@@ -78,14 +146,26 @@ export default function EtiquettesQr({ onClose }) {
         return false;
       return true;
     });
-  }, [equipements, filialeFiltre, groupeFiltre, siteFiltre, typeFiltre]);
+  }, [
+    tous,
+    origineFiltre,
+    filialeFiltre,
+    groupeFiltre,
+    siteFiltre,
+    typeFiltre,
+  ]);
 
   const filialeLibelle =
     filiales.find((f) => f.code === filialeFiltre)?.libelle ??
     "Toutes filiales";
 
-  return (
-    <div style={overlayStyle} onClick={onClose}>
+  return createPortal(
+    <div
+      className="etiquettes-qr-overlay"
+      style={overlayStyle}
+      onClick={onClose}
+    >
+      <style>{STYLE_IMPRESSION}</style>
       <div
         className="etiquettes-qr-print-zone"
         style={cardStyle}
@@ -132,6 +212,19 @@ export default function EtiquettesQr({ onClose }) {
           }}
         >
           <select
+            value={origineFiltre}
+            onChange={(e) => {
+              setOrigineFiltre(e.target.value);
+              setSiteFiltre("");
+            }}
+            style={selectStyle}
+          >
+            <option value="">Équipements & Engins</option>
+            <option value="equipement">Équipements</option>
+            <option value="engin">Engins</option>
+          </select>
+
+          <select
             value={filialeFiltre}
             onChange={(e) => {
               setFilialeFiltre(e.target.value);
@@ -152,9 +245,12 @@ export default function EtiquettesQr({ onClose }) {
             onChange={(e) => setGroupeFiltre(e.target.value)}
             style={selectStyle}
           >
-            <option value="">Fixes & Mobiles</option>
-            <option value="Fixe">Fixes uniquement</option>
-            <option value="Mobile">Mobiles uniquement</option>
+            <option value="">Tous les groupes</option>
+            {groupesDisponibles.map((g) => (
+              <option key={g} value={g}>
+                {g}
+              </option>
+            ))}
           </select>
 
           <select
@@ -186,27 +282,30 @@ export default function EtiquettesQr({ onClose }) {
           <div style={{ flex: 1 }} />
 
           <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-            {equipementsFiltres.length} équipement(s)
+            {elementsFiltres.length} étiquette(s)
           </div>
 
           <button
             type="button"
             className="btn btn-primary"
             onClick={() => window.print()}
-            disabled={equipementsFiltres.length === 0}
+            disabled={elementsFiltres.length === 0}
           >
             🖨 Imprimer
           </button>
         </div>
 
-        {equipementsFiltres.length === 0 ? (
+        {elementsFiltres.length === 0 ? (
           <div style={{ padding: 16, color: "var(--text-muted)" }}>
-            Aucun équipement ne correspond à ces critères.
+            Aucun équipement ni engin ne correspond à ces critères.
           </div>
         ) : (
           <div className="etiquettes-qr-grille">
-            {equipementsFiltres.map((eq) => {
+            {elementsFiltres.map(({ origine, id, eq }) => {
+              const estEngin = origine === "engin";
               const estMobile = eq.type_equipement?.categorie === "Mobile";
+              // Première caractéristique définie pour ce type (ex: "1000 KVA"),
+              // affichée sous le type quand elle est renseignée.
               const premiereCle =
                 eq.type_equipement?.caracteristiques_definition?.[0]?.cle;
               const valeurCaracteristique = premiereCle
@@ -215,12 +314,13 @@ export default function EtiquettesQr({ onClose }) {
 
               return (
                 <div
-                  key={eq.id_equipement}
+                  key={`${origine}-${id}`}
                   style={{
-                    border: "1px solid var(--gold)",
+                    border: `1px solid ${DORE_ETIQUETTE}`,
                     borderRadius: 8,
                     padding: 12,
                     background: "var(--surface)",
+                    breakInside: "avoid",
                   }}
                 >
                   <div
@@ -249,8 +349,12 @@ export default function EtiquettesQr({ onClose }) {
                         fontFamily: "'IBM Plex Mono', monospace",
                         textTransform: "uppercase",
                         letterSpacing: "0.02em",
-                        background: estMobile ? "#EDE7F6" : "var(--success-bg)",
-                        color: estMobile ? "#6B4FA0" : "var(--success)",
+                        background:
+                          estEngin || estMobile
+                            ? "#EDE7F6"
+                            : "var(--success-bg)",
+                        color:
+                          estEngin || estMobile ? "#6B4FA0" : "var(--success)",
                       }}
                     >
                       <span
@@ -261,7 +365,7 @@ export default function EtiquettesQr({ onClose }) {
                           background: "currentColor",
                         }}
                       />
-                      {estMobile ? "MOBILE" : "FIXE"}
+                      {estEngin ? "ENGIN" : estMobile ? "MOBILE" : "FIXE"}
                     </span>
                   </div>
 
@@ -272,14 +376,17 @@ export default function EtiquettesQr({ onClose }) {
                       margin: "8px 0",
                     }}
                   >
-                    <QRCodeSVG value={eq.id_equipement} size={64} />
+                    <QRCodeSVG
+                      value={estEngin ? `ENGIN:${id}` : id}
+                      size={64}
+                    />
                   </div>
 
                   <div
                     className="mono"
                     style={{
                       fontSize: 10.5,
-                      color: "var(--gold)",
+                      color: DORE_ETIQUETTE,
                       fontWeight: 700,
                       textAlign: "center",
                       overflow: "hidden",
@@ -287,7 +394,7 @@ export default function EtiquettesQr({ onClose }) {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {eq.id_equipement}
+                    {id}
                   </div>
                   <div
                     style={{
@@ -356,6 +463,7 @@ export default function EtiquettesQr({ onClose }) {
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

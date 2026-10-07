@@ -1,346 +1,389 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import Plate from "../../components/Plate";
 import Badge from "../../components/Badge";
-import Gauge from "../../components/Gauge";
-import EquipementModal from "../equipements/EquipementModal";
-import ScannerEquipementModal from "../scan/ScannerEquipementModal";
-import { IconQr } from "../../components/icons";
-import { useAuth } from "../../context/AuthContext";
 import { useFilialeTheme } from "../../context/FilialeThemeContext";
-import { apiFetch } from "../../utils/api";
-import { statutEcheance, formatDateFR } from "./utils/echeance";
+import { useEquipements } from "../../context/EquipementsContext";
+import { useEngins } from "../../context/EnginsContext";
 
-const STATUT_BADGE = {
-  retard: <Badge tone="danger">Retard</Badge>,
-  j0: <Badge tone="danger">J-0</Badge>,
-  j15: <Badge tone="warning">J-15</Badge>,
-  j30: <Badge tone="success">J-30</Badge>,
-  ok: <Badge tone="success">À jour</Badge>,
-};
+// Tableau de bord UNIQUE du groupe : équipements fixes (table "equipement") et
+// engins mobiles (table "engin") ensemble. Les deux tables restent séparées en
+// base ; seul cet écran les rassemble.
+
+const COULEUR_ENGIN = "#6B4FA0";
+const COULEUR_FIXE = "#1F7A5A";
+
+// Nombre de réserves non clôturées d'un équipement ou d'un engin.
+function reservesNonCloturees(item) {
+  return (item.controles ?? []).flatMap((c) =>
+    (c.reserves ?? []).filter((r) => r.statut !== "Clôturée"),
+  );
+}
+
+function estControle(item) {
+  return (item.controles ?? []).length > 0;
+}
+
+// Compte les éléments par libellé de type, du plus fréquent au moins fréquent.
+function compterParType(liste) {
+  const compte = new Map();
+  for (const item of liste) {
+    const libelle = item.type_equipement?.libelle ?? "Sans type";
+    compte.set(libelle, (compte.get(libelle) ?? 0) + 1);
+  }
+  return [...compte.entries()].sort((a, b) => b[1] - a[1]);
+}
+
+function CarteChiffre({ couleur, valeur, titre, sousTitre }) {
+  return (
+    <div
+      style={{
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderTop: `3px solid ${couleur}`,
+        borderRadius: 8,
+        padding: "16px 18px",
+      }}
+    >
+      <div style={{ fontSize: 30, fontWeight: 800, color: couleur }}>
+        {valeur}
+      </div>
+      <div style={{ fontSize: 12.5, fontWeight: 700, marginTop: 4 }}>
+        {titre}
+      </div>
+      <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>
+        {sousTitre}
+      </div>
+    </div>
+  );
+}
+
+function BarreProgression({ pourcent, couleur }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div
+        style={{
+          flex: 1,
+          height: 6,
+          borderRadius: 3,
+          background: "var(--border)",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            width: `${pourcent}%`,
+            height: "100%",
+            background: couleur,
+          }}
+        />
+      </div>
+      <span
+        className="mono"
+        style={{ fontSize: 11.5, color: "var(--text-muted)", minWidth: 32 }}
+      >
+        {pourcent}%
+      </span>
+    </div>
+  );
+}
+
+function PanneauRepartition({ titre, lignes, couleur }) {
+  const max = Math.max(1, ...lignes.map(([, n]) => n));
+  return (
+    <Plate>
+      <div className="panel-header">
+        <div className="panel-title">{titre}</div>
+      </div>
+      <div style={{ padding: "6px 18px 14px" }}>
+        {lignes.length === 0 ? (
+          <div style={{ color: "var(--text-muted)", fontSize: 13 }}>
+            Aucune donnée.
+          </div>
+        ) : (
+          lignes.map(([libelle, nombre]) => (
+            <div
+              key={libelle}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                padding: "5px 0",
+                fontSize: 13,
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>{libelle}</div>
+              <div
+                style={{
+                  width: 90,
+                  height: 5,
+                  borderRadius: 3,
+                  background: "var(--border)",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    width: `${(nombre / max) * 100}%`,
+                    height: "100%",
+                    background: couleur,
+                  }}
+                />
+              </div>
+              <div
+                className="mono"
+                style={{
+                  width: 34,
+                  textAlign: "right",
+                  fontWeight: 700,
+                  color: couleur,
+                }}
+              >
+                {nombre}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </Plate>
+  );
+}
 
 export default function Dashboard() {
-  const { user } = useAuth();
-  // Bouton "Scanner un équipement" : avant, allait vers /scanner
-  // (ScanSimule.jsx -> MobileControl.jsx, formulaire de contrôle terrain,
-  // supprimé — Phase 8). Ouvre maintenant la même popup que le bouton
-  // "Scanner QR Code" de la sidebar (fiche technique, pas de formulaire de
-  // contrôle), avec la même règle de permission.
-  const [scanOuvert, setScanOuvert] = useState(false);
+  const { filialeActive, filiales: filialesTheme } = useFilialeTheme();
+  const {
+    equipements,
+    filiales,
+    chargement: chargementEquipements,
+  } = useEquipements();
+  const { engins, chargement: chargementEngins } = useEngins();
 
-  // La filiale active et la liste des filiales viennent maintenant du contexte
-  // partagé (chargées une seule fois, utilisées aussi par la Sidebar).
-  const { filialeActive, filiales } = useFilialeTheme();
-  const [equipements, setEquipements] = useState([]);
-  const [chargement, setChargement] = useState(true);
-  const [erreur, setErreur] = useState(null);
-  const [fichierOuvert, setFichierOuvert] = useState(null);
-  // Charge les équipements (+ contrôles + réserves) selon la filiale active
-  useEffect(() => {
-    setChargement(true);
-    setErreur(null);
+  const filialeFiltree = filialeActive && filialeActive !== "GROUPE";
 
-    const params =
-      filialeActive && filialeActive !== "GROUPE"
-        ? `?id_filiale=${filiales.find((f) => f.code === filialeActive)?.id_filiale ?? ""}`
-        : "";
+  // Équipements "fixes" : tout ce qui n'est pas de catégorie "Mobile" dans la
+  // table equipement (les mobiles sont dans la table engin).
+  const fixes = useMemo(
+    () =>
+      equipements.filter(
+        (e) =>
+          e.type_equipement?.categorie !== "Mobile" &&
+          (!filialeFiltree || e.filiale?.code === filialeActive),
+      ),
+    [equipements, filialeFiltree, filialeActive],
+  );
+  const mobiles = useMemo(
+    () =>
+      engins.filter(
+        (e) => !filialeFiltree || e.filiale?.code === filialeActive,
+      ),
+    [engins, filialeFiltree, filialeActive],
+  );
 
-    apiFetch(`/equipements${params}`)
-      .then(setEquipements)
-      .catch((e) => setErreur(e.message))
-      .finally(() => setChargement(false));
-  }, [filialeActive, filiales]);
+  const tous = useMemo(() => [...fixes, ...mobiles], [fixes, mobiles]);
+  const nbControles = tous.filter(estControle).length;
+  const nbControlesFixes = fixes.filter(estControle).length;
+  const nbControlesMobiles = mobiles.filter(estControle).length;
+  const reservesOuvertes = useMemo(
+    () => tous.flatMap((item) => reservesNonCloturees(item)),
+    [tous],
+  );
+  const reservesCritiques = reservesOuvertes.filter(
+    (r) => r.niveau_criticite === "Critique",
+  ).length;
+  const pourcentParc = tous.length
+    ? Math.round((nbControles / tous.length) * 100)
+    : 0;
 
-  // §3.2 : le moteur d'alertes se base sur la "prochaine échéance" du dernier contrôle de chaque équipement
-  const echeances = useMemo(() => {
-    return equipements
-      .map((eq) => {
-        const dernierControle = [...(eq.controles ?? [])].sort((a, b) =>
-          a.date_controle < b.date_controle ? 1 : -1,
-        )[0];
-        if (!dernierControle) return null;
+  // Une ligne par filiale (ou seulement la filiale active).
+  const lignesFiliales = useMemo(() => {
+    return filiales
+      .filter((f) => !filialeFiltree || f.code === filialeActive)
+      .map((f) => {
+        const fx = fixes.filter((e) => e.filiale?.code === f.code);
+        const mb = mobiles.filter((e) => e.filiale?.code === f.code);
+        const total = fx.length + mb.length;
+        const controles = [...fx, ...mb].filter(estControle).length;
+        const reserves = [...fx, ...mb].flatMap((i) => reservesNonCloturees(i));
         return {
-          equipement: eq,
-          prochaineEcheance: dernierControle.prochaine_echeance,
-          statut: statutEcheance(dernierControle.prochaine_echeance),
+          filiale: f,
+          fixes: fx.length,
+          mobiles: mb.length,
+          total,
+          controles,
+          reserves: reserves.length,
+          critiques: reserves.filter((r) => r.niveau_criticite === "Critique")
+            .length,
+          avancement: total ? Math.round((controles / total) * 100) : 0,
         };
       })
-      .filter((e) => e && e.statut !== "ok")
-      .sort((a, b) => (a.prochaineEcheance < b.prochaineEcheance ? -1 : 1));
-  }, [equipements]);
+      .filter((l) => l.total > 0);
+  }, [filiales, fixes, mobiles, filialeFiltree, filialeActive]);
 
-  const reservesOuvertes = useMemo(() => {
-    const liste = [];
-    for (const eq of equipements) {
-      for (const c of eq.controles ?? []) {
-        for (const r of c.reserves ?? []) {
-          if (r.statut !== "Clôturée")
-            liste.push({ equipement: eq, reserve: r });
-        }
-      }
-    }
-    return liste;
-  }, [equipements]);
+  const libelleFiliale = filialeFiltree
+    ? (filialesTheme.find((f) => f.code === filialeActive)?.libelle ??
+      `Filiale ${filialeActive}`)
+    : "Toutes filiales";
 
-  const enRetard = echeances.filter((e) => e.statut === "retard");
-
-  const tauxConformite = useMemo(() => {
-    if (equipements.length === 0) return null;
-    const refsEnDefaut = new Set(
-      reservesOuvertes
-        .filter((r) => r.reserve.niveau_criticite === "Critique")
-        .map((r) => r.equipement.id_equipement),
-    );
-    return Math.round(
-      ((equipements.length - refsEnDefaut.size) / equipements.length) * 100,
-    );
-  }, [equipements, reservesOuvertes]);
+  const enChargement = chargementEquipements || chargementEngins;
 
   return (
     <>
       <div className="topbar">
         <div>
-          <div className="eyebrow">
-            {filialeActive === "GROUPE"
-              ? "Toutes les filiales"
-              : (filiales.find((f) => f.code === filialeActive)?.libelle ??
-                `Filiale ${filialeActive ?? ""}`)}
-          </div>
-          <h1 style={{ fontSize: "22px" }}>Tableau de bord</h1>
-        </div>
-        {user?.hasPermission("equipements.scanner") && (
-          <button
-            className="btn btn-secondary"
-            onClick={() => setScanOuvert(true)}
+          <h1 style={{ fontSize: "22px" }}>Tableau de bord — Groupe Ménara</h1>
+          <div
+            style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}
           >
-            <IconQr /> Scanner un équipement
-          </button>
-        )}
+            Contrôle réglementaire — Équipements fixes & Engins mobiles —{" "}
+            {libelleFiliale}
+          </div>
+        </div>
       </div>
 
-      {scanOuvert && (
-        <ScannerEquipementModal onClose={() => setScanOuvert(false)} />
-      )}
-
       <div className="content">
-        {erreur && (
-          <Plate style={{ padding: 16, color: "var(--danger)" }}>
-            {erreur}
-          </Plate>
-        )}
-        {chargement ? (
+        {enChargement ? (
           <Plate style={{ padding: 16 }}>Chargement...</Plate>
         ) : (
           <>
-            <div className="hero-row">
-              <Plate style={{ padding: "20px" }}>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                  }}
-                >
-                  <Gauge percent={tauxConformite ?? 0} />
-                  <div className="gauge-label" style={{ marginTop: 8 }}>
-                    Taux de conformité
-                  </div>
-                  <div className="stat-sub" style={{ marginTop: 2 }}>
-                    {tauxConformite === null
-                      ? "Aucun équipement suivi"
-                      : `${equipements.length} équipements suivis`}
-                  </div>
-                </div>
-              </Plate>
-              <div className="stat-row">
-                <Plate>
-                  <div style={{ padding: "16px 18px" }}>
-                    <div className="stat-label">Réserves ouvertes</div>
-                    <div className="stat-value">{reservesOuvertes.length}</div>
-                    <div className="stat-sub">
-                      dont{" "}
-                      {
-                        reservesOuvertes.filter(
-                          (r) => r.reserve.niveau_criticite === "Critique",
-                        ).length
-                      }{" "}
-                      critique(s)
-                    </div>
-                  </div>
-                </Plate>
-                <Plate>
-                  <div style={{ padding: "16px 18px" }}>
-                    <div className="stat-label">En retard</div>
-                    <div
-                      className="stat-value"
-                      style={{ color: "var(--danger)" }}
-                    >
-                      {enRetard.length}
-                    </div>
-                    <div className="stat-sub ref">
-                      {enRetard[0]?.equipement.id_equipement ?? "—"}
-                    </div>
-                  </div>
-                </Plate>
-                <Plate>
-                  <div style={{ padding: "16px 18px" }}>
-                    <div className="stat-label">Échéances ≤ 30j</div>
-                    <div
-                      className="stat-value"
-                      style={{ color: "var(--gold)" }}
-                    >
-                      {echeances.length}
-                    </div>
-                    <div className="stat-sub">contrôles à planifier</div>
-                  </div>
-                </Plate>
-              </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+                gap: 14,
+                marginBottom: 18,
+              }}
+            >
+              <CarteChiffre
+                couleur="var(--bordeaux)"
+                valeur={tous.length}
+                titre="Total équipements"
+                sousTitre={`${mobiles.length} mobiles / ${fixes.length} fixes`}
+              />
+              <CarteChiffre
+                couleur={COULEUR_ENGIN}
+                valeur={mobiles.length}
+                titre="Engins mobiles"
+                sousTitre={`${nbControlesMobiles} contrôlés`}
+              />
+              <CarteChiffre
+                couleur={COULEUR_FIXE}
+                valeur={fixes.length}
+                titre="Équipements fixes"
+                sousTitre={`${nbControlesFixes} contrôlés`}
+              />
+              <CarteChiffre
+                couleur="var(--success)"
+                valeur={nbControles}
+                titre="Contrôlés"
+                sousTitre={`${pourcentParc}% du parc`}
+              />
+              <CarteChiffre
+                couleur="var(--gold)"
+                valeur={reservesOuvertes.length}
+                titre="Réserves ouvertes"
+                sousTitre="toutes gravités"
+              />
+              <CarteChiffre
+                couleur="var(--danger)"
+                valeur={reservesCritiques}
+                titre="Réserves critiques"
+                sousTitre="priorité urgente"
+              />
             </div>
+
+            <Plate style={{ marginBottom: 18 }}>
+              <div className="panel-header">
+                <div className="panel-title">Récapitulatif par filiale</div>
+              </div>
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Filiale</th>
+                      <th>Fixes</th>
+                      <th>Mobiles</th>
+                      <th>Total</th>
+                      <th>Contrôlés</th>
+                      <th>Réserves</th>
+                      <th>Avancement</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lignesFiliales.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={7}
+                          style={{
+                            textAlign: "center",
+                            color: "var(--text-muted)",
+                          }}
+                        >
+                          Aucun équipement ni engin à afficher.
+                        </td>
+                      </tr>
+                    ) : (
+                      lignesFiliales.map((l) => (
+                        <tr key={l.filiale.code}>
+                          <td>
+                            <div style={{ fontWeight: 700 }}>
+                              {l.filiale.libelle}
+                            </div>
+                            <div className="ref">{l.filiale.code}</div>
+                          </td>
+                          <td>{l.fixes}</td>
+                          <td>{l.mobiles}</td>
+                          <td style={{ fontWeight: 800 }}>{l.total}</td>
+                          <td
+                            className="mono"
+                            style={{ fontWeight: 700, color: "var(--gold)" }}
+                          >
+                            {l.controles}/{l.total}
+                          </td>
+                          <td>
+                            {l.reserves === 0 ? (
+                              <Badge tone="success">Conforme</Badge>
+                            ) : (
+                              <Badge
+                                tone={l.critiques > 0 ? "danger" : "warning"}
+                              >
+                                {l.reserves} ouverte(s)
+                              </Badge>
+                            )}
+                          </td>
+                          <td style={{ minWidth: 180 }}>
+                            <BarreProgression
+                              pourcent={l.avancement}
+                              couleur="var(--success)"
+                            />
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Plate>
 
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1.6fr 1fr",
-                gap: "16px",
+                gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+                gap: 16,
               }}
             >
-              <Plate>
-                <div className="panel-header">
-                  <div className="panel-title">Prochaines échéances</div>
-                  <button
-                    className="btn btn-secondary"
-                    style={{ fontSize: "11.5px", padding: "6px 12px" }}
-                  >
-                    Exporter
-                  </button>
-                </div>
-                <div className="table-scroll">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Équipement</th>
-                        <th>Type</th>
-                        <th>Échéance</th>
-                        <th>Statut</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {echeances.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={4}
-                            style={{
-                              textAlign: "center",
-                              color: "var(--text-muted)",
-                            }}
-                          >
-                            Aucune échéance à venir.
-                          </td>
-                        </tr>
-                      ) : (
-                        echeances.map((e) => (
-                          <tr
-                            key={e.equipement.id_equipement}
-                            className="rowlink"
-                            onClick={() =>
-                              setFichierOuvert(e.equipement.id_equipement)
-                            }
-                          >
-                            <td>
-                              <div style={{ fontWeight: 600 }}>
-                                {e.equipement.designation}
-                              </div>
-                              <div className="ref">
-                                {e.equipement.id_equipement}
-                              </div>
-                            </td>
-                            <td style={{ color: "var(--text-muted)" }}>
-                              {e.equipement.type_equipement?.libelle ?? "—"}
-                            </td>
-                            <td className="mono">
-                              {formatDateFR(e.prochaineEcheance)}
-                            </td>
-                            <td>{STATUT_BADGE[e.statut]}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </Plate>
-
-              <Plate>
-                <div className="panel-header">
-                  <div className="panel-title">Réserves à traiter</div>
-                </div>
-                <div style={{ padding: "6px 4px" }}>
-                  {reservesOuvertes.length === 0 ? (
-                    <div
-                      style={{
-                        padding: 16,
-                        color: "var(--text-muted)",
-                        fontSize: 13,
-                      }}
-                    >
-                      Aucune réserve ouverte.
-                    </div>
-                  ) : (
-                    reservesOuvertes.map((r, i) => (
-                      <div
-                        key={r.reserve.id_reserve}
-                        className="rowlink"
-                        onClick={() =>
-                          setFichierOuvert(r.equipement.id_equipement)
-                        }
-                        style={{
-                          padding: "12px 16px",
-                          borderBottom:
-                            i < reservesOuvertes.length - 1
-                              ? "1px solid var(--border)"
-                              : "none",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "flex-start",
-                            gap: 8,
-                          }}
-                        >
-                          <div className="ref">
-                            {r.equipement.id_equipement}
-                          </div>
-                          <Badge
-                            tone={
-                              r.reserve.niveau_criticite === "Critique"
-                                ? "danger"
-                                : r.reserve.niveau_criticite === "Majeure"
-                                  ? "warning"
-                                  : "success"
-                            }
-                          >
-                            {r.reserve.niveau_criticite} · {r.reserve.statut}
-                          </Badge>
-                        </div>
-                        <div style={{ fontSize: 13, marginTop: 4 }}>
-                          {r.reserve.nature_reserve}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </Plate>
+              <PanneauRepartition
+                titre="Engins mobiles par catégorie"
+                lignes={compterParType(mobiles)}
+                couleur={COULEUR_ENGIN}
+              />
+              <PanneauRepartition
+                titre="Équipements fixes par type"
+                lignes={compterParType(fixes)}
+                couleur={COULEUR_FIXE}
+              />
             </div>
           </>
         )}
       </div>
-
-      {fichierOuvert && (
-        <EquipementModal
-          id={fichierOuvert}
-          onClose={() => setFichierOuvert(null)}
-        />
-      )}
     </>
   );
 }

@@ -7,6 +7,7 @@ use App\Models\QuestionAssistant;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PoserRequest;
 use App\Models\Controle;
+use App\Models\Engin;
 use App\Models\Equipement;
 use App\Models\Reserve;
 use App\Models\TypeEquipement;
@@ -64,6 +65,21 @@ TEXT;
             . 'Type : ' . ($type->libelle ?? '—') . ' (' . ($type->categorie ?? '—') . ")\n"
             . 'Filiale : ' . ($eq->filiale->libelle ?? '—') . ' — Site : ' . ($eq->site->libelle ?? '—') . "\n"
             . "Statut : {$eq->statut}\n"
+            . 'Caractéristiques : ' . ($caracteristiques ?: 'non renseignées');
+    }
+
+    // Même résumé que contexteEquipement(), pour un ENGIN (table "engin").
+    private function contexteEngin(Engin $engin): string
+    {
+        $type = $engin->typeEquipement;
+        $caracteristiques = collect($engin->caracteristiques ?? [])
+            ->map(fn ($valeur, $cle) => "{$cle}: {$valeur}")
+            ->implode(', ');
+
+        return "Engin : {$engin->designation} ({$engin->id_engin})\n"
+            . 'Type : ' . ($type->libelle ?? '—') . ' (' . ($type->categorie ?? '—') . ")\n"
+            . 'Filiale : ' . ($engin->filiale->libelle ?? '—') . ' — Site : ' . ($engin->site->libelle ?? '—') . "\n"
+            . "Statut : {$engin->statut}\n"
             . 'Caractéristiques : ' . ($caracteristiques ?: 'non renseignées');
     }
 
@@ -136,6 +152,40 @@ TEXT;
 
         $reponse = $this->genererTexte($prompt);
         $this->journaliser($idEquipement, 'Points de contrôle', $reponse, 'points_controle');
+
+        return response()->json(['reponse' => $reponse]);
+    }
+
+    // --- Engins (table "engin", séparée de "equipement") ---
+    // question_assistant.id_equipement référence la table "equipement" : on ne
+    // peut pas y stocker l'identifiant d'un engin, donc ces appels sont
+    // journalisés sans identifiant d'équipement (null), avec la question qui
+    // contient l'identifiant de l'engin.
+
+    public function planActionEngin($idEngin)
+    {
+        $engin = Engin::with(['typeEquipement', 'filiale', 'site'])->findOrFail($idEngin);
+
+        $prompt = self::PERIMETRE . "\n\n" . $this->contexteEngin($engin)
+            . "\n\nRédige un plan d'action de mise en conformité réglementaire pour cet engin : "
+            . '3 à 5 actions concrètes et priorisées, sous forme de liste à puces courte.';
+
+        $reponse = $this->genererTexte($prompt);
+        $this->journaliser(null, "Plan d'action (engin {$idEngin})", $reponse, 'plan_action');
+
+        return response()->json(['reponse' => $reponse]);
+    }
+
+    public function pointsControleEngin($idEngin)
+    {
+        $engin = Engin::with(['typeEquipement', 'filiale', 'site'])->findOrFail($idEngin);
+
+        $prompt = self::PERIMETRE . "\n\n" . $this->contexteEngin($engin)
+            . "\n\nListe les points de contrôle réglementaires à vérifier lors du prochain contrôle de cet engin : "
+            . '4 à 6 points, sous forme de liste à puces courte.';
+
+        $reponse = $this->genererTexte($prompt);
+        $this->journaliser(null, "Points de contrôle (engin {$idEngin})", $reponse, 'points_controle');
 
         return response()->json(['reponse' => $reponse]);
     }

@@ -4,12 +4,16 @@ use App\Http\Controllers\AssistantController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BootstrapController;
 use App\Http\Controllers\ControleController;
+use App\Http\Controllers\ControleEnginController;
+use App\Http\Controllers\EnginController;
 use App\Http\Controllers\EquipementController;
 use App\Http\Controllers\FilialeController;
 use App\Http\Controllers\GroupeEquipementController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RapportController;
+use App\Http\Controllers\RapportEnginController;
 use App\Http\Controllers\ReserveController;
+use App\Http\Controllers\ReserveEnginController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SiteController;
 use App\Http\Controllers\TypeEquipementController;
@@ -35,6 +39,15 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middlewareFor('update', 'permission:equipements.edit')
         ->middlewareFor('destroy', 'permission:equipements.delete');
 
+    // Engins : tables séparées de "equipement" (engin, controle_engin,
+    // reserve_engin, rapport_engin) — mêmes permissions que les équipements,
+    // réutilisées pour rester simple (pas de permissions dédiées aux engins).
+    Route::apiResource('engins', EnginController::class)
+        ->middlewareFor(['index', 'show'], 'permission:equipements.view')
+        ->middlewareFor('store', 'permission:equipements.create')
+        ->middlewareFor('update', 'permission:equipements.edit')
+        ->middlewareFor('destroy', 'permission:equipements.delete');
+
     Route::apiResource('filiales', FilialeController::class);
 
     // Gestion des rôles/permissions : réservée aux mêmes comptes que la
@@ -49,6 +62,14 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middlewareFor(['store', 'update'], 'permission:reserves.lever');
 
     Route::apiResource('controles', ControleController::class)
+        ->only(['index', 'show', 'store'])
+        ->middlewareFor('store', 'permission:controles.create');
+
+    Route::apiResource('reserves-engin', ReserveEnginController::class)
+        ->only(['index', 'show', 'store', 'update'])
+        ->middlewareFor(['store', 'update'], 'permission:reserves.lever');
+
+    Route::apiResource('controles-engin', ControleEnginController::class)
         ->only(['index', 'show', 'store'])
         ->middlewareFor('store', 'permission:controles.create');
 
@@ -77,8 +98,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/equipements/{id}/rapports', [RapportController::class, 'store'])
         ->middleware('permission:equipements.edit');
 
+    Route::get('/engins/{id}/rapports', [RapportEnginController::class, 'index']);
+    Route::post('/engins/{id}/rapports', [RapportEnginController::class, 'store'])
+        ->middleware('permission:equipements.edit');
+
     Route::post('/equipements/{id}/assistant/plan-action', [AssistantController::class, 'planAction']);
     Route::post('/equipements/{id}/assistant/points-controle', [AssistantController::class, 'pointsControle']);
-
+    Route::post('/engins/{id}/assistant/plan-action', [AssistantController::class, 'planActionEngin']);
+    Route::post('/engins/{id}/assistant/points-controle', [AssistantController::class, 'pointsControleEngin']);
     Route::post('/assistant', [AssistantController::class, 'poser']);
 });

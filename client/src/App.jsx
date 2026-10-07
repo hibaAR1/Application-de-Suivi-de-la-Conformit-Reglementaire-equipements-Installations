@@ -6,6 +6,9 @@ import ChangerMotDePasse from "./modules/auth/ChangerMotDePasse";
 import Dashboard from "./modules/dashboard/Dashboard";
 import EquipementsListe from "./modules/equipements/EquipementsListe";
 import EquipementForm from "./modules/equipements/EquipementForm";
+import EnginsListe from "./modules/engins/EnginsListe";
+import EnginForm from "./modules/engins/EnginForm";
+import ReserveEnginForm from "./modules/engins/ReserveEnginForm";
 import ReserveForm from "./modules/reserves/ReserveForm";
 import ReservesPlanAction from "./modules/reserves/ReservesPlanAction";
 import Utilisateurs from "./modules/utilisateurs/Utilisateurs"; // AJOUTE
@@ -37,9 +40,24 @@ function App() {
               path="/equipements/fixes"
               element={<Navigate to="/equipements" replace />}
             />
+            {/* Engins : table "engin" séparée de "equipement" (plus un simple
+                filtre "Mobile" de la liste des équipements). */}
+            <Route path="/engins-mobiles" element={<EnginsListe />} />
+            <Route path="/engins-mobiles/nouveau" element={<EnginForm />} />
             <Route
-              path="/engins-mobiles"
-              element={<EquipementsListe key="mobile" categorie="Mobile" />}
+              path="/engins-mobiles/:ref/modifier"
+              element={<EnginForm />}
+            />
+            {/* Les réserves des engins s'affichent maintenant dans la page
+                unique "Réserves & Plan d'action" (/reserves). Cette ancienne
+                adresse y redirige, pour ne pas casser d'éventuels favoris. */}
+            <Route
+              path="/engins-mobiles/reserves"
+              element={<Navigate to="/reserves" replace />}
+            />
+            <Route
+              path="/engins-mobiles/reserves/:id/lever"
+              element={<ReserveEnginForm />}
             />
             <Route path="/equipements/nouveau" element={<EquipementForm />} />
             <Route
