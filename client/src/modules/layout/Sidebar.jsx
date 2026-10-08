@@ -234,85 +234,90 @@ export default function Sidebar() {
         {/* 5. Section "Administration" : le titre est affiché selon les mêmes
             permissions que les liens qu'il introduit ci-dessous, pour ne
             jamais apparaître seul, sans rien en dessous. */}
-        {(user?.hasPermission("utilisateurs.manage") ||
-          user?.hasPermission("equipements.create")) && (
-          <div className="nav-section-label">Administration</div>
-        )}
-        {user?.hasPermission("utilisateurs.manage") && (
-          <NavLink
-            to="/utilisateurs"
-            title="Utilisateurs"
-            className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
-          >
-            <IconUsers />
-            <span className="nav-label">Utilisateurs</span>
-          </NavLink>
-        )}
-        {/* Gestion des rôles et de leurs permissions (créer un rôle, cocher
-            ses permissions par module, ajouter de nouvelles permissions).
-            Réservée aux mêmes comptes que la page Utilisateurs. */}
-        {user?.hasPermission("utilisateurs.manage") && (
-          <NavLink
-            to="/roles"
-            title="Rôles & Permissions"
-            className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
-          >
-            <IconUsers />
-            <span className="nav-label">Rôles & Permissions</span>
-          </NavLink>
-        )}
-        {/* "Données de base" (Groupes, Types d'équipement) : visible par qui
-            crée ou modifie des équipements (equipements.create), et pas
-            seulement par qui gère les comptes utilisateurs
-            (utilisateurs.manage). Sinon un utilisateur qui n'a que
-            equipements.create ne verrait jamais cette section. */}
-        {(user?.hasPermission("utilisateurs.manage") ||
-          user?.hasPermission("equipements.create")) && (
+        {(user?.hasPermission("utilisateurs.view") ||
+          user?.hasPermission("roles.view") ||
+          user?.hasPermission("donnees_base.view")) && (
           <>
-            <button
-              type="button"
-              className="nav-item"
-              style={{ cursor: "pointer", fontFamily: "inherit" }}
-              onClick={() => setDonneesBaseOuvert((v) => !v)}
-              aria-expanded={donneesBaseOuvert}
-            >
-              <IconBox />
-              <span className="nav-label" style={{ flex: 1 }}>
-                Données de base
-              </span>
-              <span
-                style={{
-                  display: "flex",
-                  transform: donneesBaseOuvert ? "rotate(90deg)" : "none",
-                  transition: "transform 0.15s",
-                }}
+            <div className="nav-section-label">Administration</div>
+
+            {user?.hasPermission("utilisateurs.manage") && (
+              <NavLink
+                to="/utilisateurs"
+                title="Utilisateurs"
+                className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
               >
-                <IconChevron />
-              </span>
-            </button>
-            {donneesBaseOuvert && (
-              <div style={{ paddingLeft: 18 }}>
-                <NavLink
-                  to="/donnees-base/groupes"
-                  title="Groupes"
-                  className={({ isActive }) =>
-                    `nav-item${isActive ? " active" : ""}`
-                  }
-                  style={{ padding: "8px 11px" }}
+                <IconUsers />
+                <span className="nav-label">Utilisateurs</span>
+              </NavLink>
+            )}
+
+            {/* Gestion des rôles et de leurs permissions (créer un rôle, cocher
+                ses permissions par module, ajouter de nouvelles permissions).
+                Réservée aux mêmes comptes que la page Utilisateurs. */}
+            {user?.hasPermission("roles.view") && (
+              <NavLink
+                to="/roles"
+                title="Rôles & Permissions"
+                className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+              >
+                <IconUsers />
+                <span className="nav-label">Rôles & Permissions</span>
+              </NavLink>
+            )}
+
+            {/* "Données de base" (Groupes, Types d'équipement) : visible par qui
+                crée ou modifie des équipements (equipements.create), et pas
+                seulement par qui gère les comptes utilisateurs
+                (utilisateurs.manage). Sinon un utilisateur qui n'a que
+                equipements.create ne verrait jamais cette section. */}
+            {user?.hasPermission("donnees_base.view") && (
+              <>
+                <button
+                  type="button"
+                  className="nav-item"
+                  style={{ cursor: "pointer", fontFamily: "inherit" }}
+                  onClick={() => setDonneesBaseOuvert((v) => !v)}
+                  aria-expanded={donneesBaseOuvert}
                 >
-                  <span className="nav-label">Groupes</span>
-                </NavLink>
-                <NavLink
-                  to="/donnees-base/types"
-                  title="Types d'équipement"
-                  className={({ isActive }) =>
-                    `nav-item${isActive ? " active" : ""}`
-                  }
-                  style={{ padding: "8px 11px" }}
-                >
-                  <span className="nav-label">Types d'équipement</span>
-                </NavLink>
-              </div>
+                  <IconBox />
+                  <span className="nav-label" style={{ flex: 1 }}>
+                    Données de base
+                  </span>
+                  <span
+                    style={{
+                      display: "flex",
+                      transform: donneesBaseOuvert ? "rotate(90deg)" : "none",
+                      transition: "transform 0.15s",
+                    }}
+                  >
+                    <IconChevron />
+                  </span>
+                </button>
+                {donneesBaseOuvert && (
+                  <div style={{ paddingLeft: 18 }}>
+                    <NavLink
+                      to="/donnees-base/groupes"
+                      title="Groupes"
+                      className={({ isActive }) =>
+                        `nav-item${isActive ? " active" : ""}`
+                      }
+                      style={{ padding: "8px 11px" }}
+                    >
+                      <span className="nav-label">Groupes</span>
+                    </NavLink>
+                    <NavLink
+                      to="/donnees-base/types"
+                      title="Types d'équipement"
+                      className={({ isActive }) =>
+                        `nav-item${isActive ? " active" : ""}`
+                      }
+                      style={{ padding: "8px 11px" }}
+                    >
+                      <span className="nav-label">Types d'équipement</span>
+                    </NavLink>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

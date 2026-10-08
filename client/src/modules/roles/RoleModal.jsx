@@ -57,6 +57,18 @@ export default function RoleModal({
     );
   }
 
+  // Case du titre d'un module : coche (ou décoche) d'un coup toutes les
+  // permissions de ce module. Si tout est déjà coché, elle décoche tout.
+  function basculerModule(permissions) {
+    const ids = permissions.map((p) => p.id_permission);
+    const toutesCochees = ids.every((id) => idPermissions.includes(id));
+    setIdPermissions((prev) =>
+      toutesCochees
+        ? prev.filter((id) => !ids.includes(id))
+        : [...new Set([...prev, ...ids])],
+    );
+  }
+
   async function enregistrer(e) {
     e.preventDefault();
     if (!libelle.trim()) {
@@ -150,48 +162,69 @@ export default function RoleModal({
             >
               Permissions accordées à ce rôle
             </label>
-            {Object.entries(parModule).map(([module, permissions]) => (
-              <div key={module} style={{ marginBottom: 10 }}>
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    textTransform: "capitalize",
-                    marginBottom: 4,
-                  }}
-                >
-                  {module}
-                </div>
-                {permissions.map((p) => (
+            {Object.entries(parModule).map(([module, permissions]) => {
+              const nbCochees = permissions.filter((p) =>
+                idPermissions.includes(p.id_permission),
+              ).length;
+              const toutesCochees = nbCochees === permissions.length;
+              return (
+                <div key={module} style={{ marginBottom: 10 }}>
+                  {/* Titre du module avec sa case "tout cocher". La case est à
+                      moitié cochée quand une partie seulement des permissions
+                      du module est accordée. */}
                   <label
-                    key={p.id_permission}
                     style={{
                       display: "flex",
                       alignItems: "center",
                       gap: 8,
-                      fontSize: 13,
-                      padding: "3px 0",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      textTransform: "capitalize",
+                      marginBottom: 4,
                     }}
                   >
                     <input
                       type="checkbox"
-                      checked={idPermissions.includes(p.id_permission)}
-                      onChange={() => basculerPermission(p.id_permission)}
+                      checked={toutesCochees}
+                      ref={(el) => {
+                        if (el)
+                          el.indeterminate = nbCochees > 0 && !toutesCochees;
+                      }}
+                      onChange={() => basculerModule(permissions)}
                     />
-                    {p.libelle}
-                    <span
+                    {module}
+                  </label>
+                  {permissions.map((p) => (
+                    <label
+                      key={p.id_permission}
                       style={{
-                        fontSize: 11,
-                        color: "var(--text-muted)",
-                        fontFamily: "'IBM Plex Mono', monospace",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        fontSize: 13,
+                        padding: "3px 0",
                       }}
                     >
-                      ({p.code})
-                    </span>
-                  </label>
-                ))}
-              </div>
-            ))}
+                      <input
+                        type="checkbox"
+                        checked={idPermissions.includes(p.id_permission)}
+                        onChange={() => basculerPermission(p.id_permission)}
+                      />
+                      {p.libelle}
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: "var(--text-muted)",
+                          fontFamily: "'IBM Plex Mono', monospace",
+                        }}
+                      >
+                        ({p.code})
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              );
+            })}
           </div>
 
           {erreur && (

@@ -35,7 +35,12 @@ export default function RolesAdmin() {
     charger();
   }, []);
 
-  if (!user?.hasPermission("utilisateurs.manage")) {
+  const peutVoir = user?.hasPermission("roles.view");
+  const peutCreer = user?.hasPermission("roles.create");
+  const peutModifier = user?.hasPermission("roles.edit");
+  const peutSupprimer = user?.hasPermission("roles.delete");
+
+  if (!peutVoir) {
     return (
       <div className="content">
         <Plate style={{ padding: 24 }}>
@@ -69,15 +74,17 @@ export default function RolesAdmin() {
           <div className="eyebrow">Administration</div>
           <h1 style={{ fontSize: "22px" }}>Rôles & Permissions</h1>
         </div>
-        <button
-          className="btn btn-primary"
-          onClick={() => {
-            setRoleEdite(null);
-            setModalRoleOuverte(true);
-          }}
-        >
-          + Nouveau rôle
-        </button>
+        {peutCreer && (
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              setRoleEdite(null);
+              setModalRoleOuverte(true);
+            }}
+          >
+            + Nouveau rôle
+          </button>
+        )}
       </div>
 
       <div className="content">
@@ -115,27 +122,31 @@ export default function RolesAdmin() {
                   >
                     <h2 style={{ fontSize: 15 }}>{r.libelle}</h2>
                     <div style={{ display: "flex", gap: 4 }}>
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        title="Modifier"
-                        style={{ padding: "4px 8px" }}
-                        onClick={() => {
-                          setRoleEdite(r);
-                          setModalRoleOuverte(true);
-                        }}
-                      >
-                        ✎
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        title="Supprimer"
-                        style={{ padding: "4px 8px", color: "var(--danger)" }}
-                        onClick={() => supprimerRole(r)}
-                      >
-                        🗑
-                      </button>
+                      {peutModifier && (
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          title="Modifier"
+                          style={{ padding: "4px 8px" }}
+                          onClick={() => {
+                            setRoleEdite(r);
+                            setModalRoleOuverte(true);
+                          }}
+                        >
+                          ✎
+                        </button>
+                      )}
+                      {peutSupprimer && (
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          title="Supprimer"
+                          style={{ padding: "4px 8px", color: "var(--danger)" }}
+                          onClick={() => supprimerRole(r)}
+                        >
+                          🗑
+                        </button>
+                      )}
                     </div>
                   </div>
                   {r.description && (
@@ -176,12 +187,14 @@ export default function RolesAdmin() {
               }}
             >
               <h2 style={{ fontSize: 16 }}>Permissions disponibles</h2>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setModalPermissionOuverte(true)}
-              >
-                + Nouvelle permission
-              </button>
+              {peutCreer && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setModalPermissionOuverte(true)}
+                >
+                  + Nouvelle permission
+                </button>
+              )}
             </div>
 
             <Plate style={{ padding: 18 }}>
@@ -237,6 +250,7 @@ export default function RolesAdmin() {
 
       {modalPermissionOuverte && (
         <NouvellePermissionModal
+          permissionsExistantes={permissions}
           onClose={() => setModalPermissionOuverte(false)}
           onEnregistre={charger}
         />

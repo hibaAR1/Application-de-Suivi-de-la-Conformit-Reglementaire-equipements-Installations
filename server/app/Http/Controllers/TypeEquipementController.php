@@ -57,8 +57,9 @@ class TypeEquipementController extends Controller
         try {
             $type->delete();
         } catch (QueryException $e) {
-            // Contrainte de clé étrangère : des équipements utilisent encore ce type.
-            abort(422, "Impossible de supprimer : des équipements utilisent encore ce type.");
+            // Contrainte de clé étrangère : des équipements ou des engins
+            // utilisent encore ce type.
+            abort(422, "Impossible de supprimer : des équipements ou des engins utilisent encore ce type. Pour le supprimer définitivement, contactez la direction.");
         }
 
         return response()->json(['message' => 'Type supprimé.']);

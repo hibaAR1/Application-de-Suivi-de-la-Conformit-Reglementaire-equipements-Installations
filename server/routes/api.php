@@ -75,12 +75,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('filiales', FilialeController::class);
 
     // --- Rôles et utilisateurs ---
-    // Réservés aux comptes qui gèrent les utilisateurs (permission
-    // "utilisateurs.manage").
+    // Une permission par action (voir, créer, modifier, supprimer). La liste
+    // des rôles reste accessible à qui crée ou modifie un utilisateur (le
+    // formulaire en a besoin pour le champ "Rôle").
     Route::apiResource('roles', RoleController::class)
-        ->middleware('permission:utilisateurs.manage');
+        ->middlewareFor('index', 'permission:roles.view|utilisateurs.create|utilisateurs.edit')
+        ->middlewareFor('show', 'permission:roles.view')
+        ->middlewareFor('store', 'permission:roles.create')
+        ->middlewareFor('update', 'permission:roles.edit')
+        ->middlewareFor('destroy', 'permission:roles.delete');
+    // Le détail d'un utilisateur (show) sert aussi au formulaire de modification.
     Route::apiResource('utilisateurs', UtilisateurController::class)
-        ->middleware('permission:utilisateurs.manage');
+        ->middlewareFor('index', 'permission:utilisateurs.view')
+        ->middlewareFor('show', 'permission:utilisateurs.view|utilisateurs.edit')
+        ->middlewareFor('store', 'permission:utilisateurs.create')
+        ->middlewareFor('update', 'permission:utilisateurs.edit')
+        ->middlewareFor('destroy', 'permission:utilisateurs.delete');
 
     // --- Réserves et contrôles des équipements ---
     Route::apiResource('reserves', ReserveController::class)
@@ -103,7 +113,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // --- Permissions ---
     Route::apiResource('permissions', PermissionController::class)
         ->only(['index', 'store'])
-        ->middleware('permission:utilisateurs.manage');
+        ->middlewareFor('index', 'permission:roles.view|roles.create|roles.edit')
+        ->middlewareFor('store', 'permission:roles.create');
 
     // --- Sites ---
     Route::get('/sites', [SiteController::class, 'index']);
@@ -113,17 +124,19 @@ Route::middleware('auth:sanctum')->group(function () {
     // --- Types d'équipement (utilisés aussi par les engins) ---
     Route::get('/type-equipements', [TypeEquipementController::class, 'index']);
     Route::post('/type-equipements', [TypeEquipementController::class, 'store'])
-        ->middleware('permission:utilisateurs.manage|equipements.create');
+        ->middleware('permission:donnees_base.create');
     Route::put('/type-equipements/{id}', [TypeEquipementController::class, 'update'])
-        ->middleware('permission:utilisateurs.manage|equipements.create');
+        ->middleware('permission:donnees_base.edit');
     Route::delete('/type-equipements/{id}', [TypeEquipementController::class, 'destroy'])
-        ->middleware('permission:utilisateurs.manage|equipements.create');
+        ->middleware('permission:donnees_base.delete');
 
     // --- Groupes d'équipement ---
     // Page "Données de base > Groupes" (Administration).
     Route::apiResource('groupes-equipement', GroupeEquipementController::class)
         ->only(['index', 'store', 'update', 'destroy'])
-        ->middlewareFor(['store', 'update', 'destroy'], 'permission:utilisateurs.manage|equipements.create');
+        ->middlewareFor('store', 'permission:donnees_base.create')
+        ->middlewareFor('update', 'permission:donnees_base.edit')
+        ->middlewareFor('destroy', 'permission:donnees_base.delete');
 
     // --- Rapports PDF (équipements puis engins) ---
     Route::get('/equipements/{id}/rapports', [RapportController::class, 'index']);

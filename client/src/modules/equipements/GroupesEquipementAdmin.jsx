@@ -137,10 +137,12 @@ export default function GroupesEquipementAdmin() {
   const [groupeEdite, setGroupeEdite] = useState(null);
   const [erreur, setErreur] = useState("");
 
-  if (
-    !user?.hasPermission("utilisateurs.manage") &&
-    !user?.hasPermission("equipements.create")
-  ) {
+  const peutVoir = user?.hasPermission("donnees_base.view");
+  const peutCreer = user?.hasPermission("donnees_base.create");
+  const peutModifier = user?.hasPermission("donnees_base.edit");
+  const peutSupprimer = user?.hasPermission("donnees_base.delete");
+
+  if (!peutVoir) {
     return (
       <div className="content">
         <Plate style={{ padding: 24 }}>
@@ -167,15 +169,17 @@ export default function GroupesEquipementAdmin() {
           <div className="eyebrow">Données de base / Groupes</div>
           <h1 style={{ fontSize: "22px" }}>Groupes</h1>
         </div>
-        <button
-          className="btn btn-primary"
-          onClick={() => {
-            setGroupeEdite(null);
-            setModalOuverte(true);
-          }}
-        >
-          + Nouveau groupe
-        </button>
+        {peutCreer && (
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              setGroupeEdite(null);
+              setModalOuverte(true);
+            }}
+          >
+            + Nouveau groupe
+          </button>
+        )}
       </div>
 
       <div className="content">
@@ -210,29 +214,34 @@ export default function GroupesEquipementAdmin() {
                 >
                   <h2 style={{ fontSize: 15 }}>{g.libelle}</h2>
                   <div style={{ display: "flex", gap: 4 }}>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      title="Modifier"
-                      style={{ padding: "4px 8px" }}
-                      onClick={() => {
-                        setGroupeEdite(g);
-                        setModalOuverte(true);
-                      }}
-                    >
-                      ✎
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      title="Supprimer"
-                      style={{ padding: "4px 8px", color: "var(--danger)" }}
-                      onClick={() => supprimer(g)}
-                    >
-                      🗑
-                    </button>
+                    {peutModifier && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        title="Modifier"
+                        style={{ padding: "4px 8px" }}
+                        onClick={() => {
+                          setGroupeEdite(g);
+                          setModalOuverte(true);
+                        }}
+                      >
+                        ✎
+                      </button>
+                    )}
+                    {peutSupprimer && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        title="Supprimer"
+                        style={{ padding: "4px 8px", color: "var(--danger)" }}
+                        onClick={() => supprimer(g)}
+                      >
+                        🗑
+                      </button>
+                    )}
                   </div>
                 </div>
+
                 <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
                   {nbTypes} type(s) d'équipement
                 </div>

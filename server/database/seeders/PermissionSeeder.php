@@ -12,26 +12,36 @@ class PermissionSeeder extends Seeder
     {
         // 1. Créer toutes les permissions
         $permissions = [
-            'equipements.view'       => 'Voir les équipements',
-            'equipements.create'     => 'Créer un équipement',
-            'equipements.edit'       => 'Modifier un équipement',
+            'equipements.view' => 'Voir les équipements',
+            'equipements.create' => 'Créer un équipement',
+            'equipements.edit' => 'Modifier un équipement',
             // Ajoutée avec la sécurisation backend : avant, "Supprimer" un
             // équipement n'était bloqué que côté écran (bouton caché si le
             // rôle n'était pas exactement "Super Admin", voir
             // EquipementsListe.jsx) — rien n'empêchait un appel direct à
             // l'API. Super Admin et Administrateur SMI Holding l'ont
             // automatiquement (accès total, voir mapping plus bas).
-            'equipements.delete'     => 'Supprimer un équipement',
-            'controles.create'       => 'Enregistrer un contrôle',
-            'equipements.scanner'    => 'Scanner un équipement (QR code)',
-            'reserves.lever'         => 'Lever une réserve',
+            'equipements.delete' => 'Supprimer un équipement',
+            'controles.create' => 'Enregistrer un contrôle',
+            'equipements.scanner' => 'Scanner un équipement (QR code)',
+            'reserves.lever' => 'Lever une réserve',
             'dashboard.filiale.view' => 'Voir le tableau de bord de sa filiale',
-            'dashboard.groupe.view'  => 'Voir le tableau de bord consolidé Groupe',
-            'utilisateurs.manage'    => 'Gérer les utilisateurs',
+            'dashboard.groupe.view' => 'Voir le tableau de bord consolidé Groupe',
+            'roles.view' => 'Voir les rôles et les permissions',
+            'roles.create' => 'Créer un rôle ou une permission',
+            'roles.edit' => 'Modifier un rôle',
+            'roles.delete' => 'Supprimer un rôle',
+            'donnees_base.view' => 'Voir les données de base (types, groupes)',
+            'donnees_base.create' => 'Créer une donnée de base',
+            'donnees_base.edit' => 'Modifier une donnée de base',
+            'donnees_base.delete' => 'Supprimer une donnée de base',
         ];
 
         foreach ($permissions as $code => $libelle) {
-            Permission::firstOrCreate(['code' => $code], ['libelle' => $libelle]);
+            Permission::updateOrCreate(
+                ['code' => $code],
+                ['libelle' => $libelle]
+            );
         }
 
         // 2. Associer les permissions à chaque rôle (selon la section 3.5 du CDC)
@@ -44,7 +54,8 @@ class PermissionSeeder extends Seeder
             // volontairement absent de sa liste ci-dessous.
             'Référent HSE filiale' => [
                 'equipements.view', 'equipements.create', 'equipements.edit',
-                'controles.create', 'reserves.lever', 'dashboard.filiale.view',
+                         'controles.create', 'reserves.lever', 'dashboard.filiale.view',
+                'donnees_base.view', 'donnees_base.create', 'donnees_base.edit', 'donnees_base.delete',
             ],
 
             'Technicien terrain' => [
