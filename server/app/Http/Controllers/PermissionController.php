@@ -5,23 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\Permission;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StorePermissionRequest;
 use App\Http\Resources\PermissionResource;
 
 class PermissionController extends Controller
 {
+    // Liste des permissions affichée dans "Rôles & Permissions" et dans le
+    // formulaire d'un rôle. Les permissions ne se créent pas depuis
+    // l'interface : elles sont définies dans le code (PermissionSeeder.php),
+    // chacune étant vérifiée par une route et par un écran.
     public function index()
     {
         return PermissionResource::collection(Permission::all());
-    }
-
-    // Page "Gestion des permissions" : ajout d'une nouvelle permission
-    // (code + libellé). Elle n'est attachée à aucun rôle par défaut — ça se
-    // fait ensuite depuis "Affecter des permissions par rôle".
-    public function store(StorePermissionRequest $request)
-    {
-        $permission = Permission::create($request->validated());
-
-        return response()->json(new PermissionResource($permission), 201);
     }
 }
